@@ -12,6 +12,7 @@ class AdminController extends Controller
     {
         return Inertia::render('Dashboard/Admin', [
             'users' => User::orderBy('role')->orderBy('name')->get(),
+            'roles' => ['super_admin', 'analyst', 'manager', 'staff']
         ]);
     }
 
@@ -43,5 +44,24 @@ class AdminController extends Controller
         $user->delete();
 
         return back()->with('success', "User {$user->name} berhasil dihapus.");
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role' => 'required|in:super_admin,analyst,manager,staff',
+        ]);
+
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+            'role' => $request->role,
+        ]);
+
+        return back()->with('success', "User {$request->name} berhasil ditambahkan.");
     }
 }

@@ -33,7 +33,17 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard');
+        // Redirect ke dashboard sesuai role
+        $user = $request->user();
+        $target = match ($user->role) {
+            'super_admin' => route('admin.index'),
+            'analyst'     => route('analyst.index'),
+            'manager'     => route('manager.index'),
+            'staff'       => route('upload.index'),
+            default       => route('dashboard'),
+        };
+
+        return redirect($target);
     }
 
     /**

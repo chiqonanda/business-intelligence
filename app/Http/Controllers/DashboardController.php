@@ -10,7 +10,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(): Response
+    public function index(): mixed
     {
         return Inertia::render('Dashboard/Overview', [
             'stats' => $this->getStats(),
@@ -27,12 +27,15 @@ class DashboardController extends Controller
 
     private function getLatestTransactions(): array
     {
+        $isGuest = !auth()->check();
+        $limit = $isGuest ? 5 : 10;
+
         return FactPenjualan::with(['produk', 'pelanggan', 'waktu'])
             ->orderByDesc('id')
-            ->limit(10)
+            ->limit($limit)
             ->get()
             ->map(fn(FactPenjualan $row) => [
-                'order_id' => $row->order_id,
+                'order_id' => $isGuest ? 'TRX-****' : $row->order_id,
                 'order_date' => $row->waktu?->order_date,
                 'product_name' => $row->produk?->product_name,
                 'product_line' => $row->produk?->product_line,

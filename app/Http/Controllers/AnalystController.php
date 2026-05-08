@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\FactPenjualan;
 use App\Models\DimProduk;
+use App\Models\DimPelanggan;
+use App\Models\DimWaktu;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -13,149 +15,177 @@ class AnalystController extends Controller
 {
     public function index(): Response
     {
-        return Inertia::render('Dashboard/Analyst');
+        return Inertia::render('Dashboard/Analyst', [
+            'years' => DimWaktu::distinct()->orderByDesc('tahun')->pluck('tahun'),
+            'regions' => DimPelanggan::distinct()->orderBy('region')->pluck('region'),
+        ]);
     }
 
-    // ── Chart: tren revenue per bulan ─────────────────────────────────────────
-    public function revenueTrend(Request $request)
+    public function apiData(Request $request)
     {
-        $year = $request->get('year', now()->year);
+        $year = $request->get('year');
+        $region = $request->get('region');
+        $search = $request->get('search');
 
-        $data = FactPenjualan::select(
-                'dim_waktu.bulan',
-                'dim_waktu.nama_bulan',
-                DB::raw('SUM(fact_penjualan.revenue) as revenue'),
-                DB::raw('SUM(fact_penjualan.profit) as profit')
-            )
-            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
-            ->where('dim_waktu.tahun', $year)
-            ->groupBy('dim_waktu.bulan', 'dim_waktu.nama_bulan')
-            ->orderBy('dim_waktu.bulan')
-            ->get();
-
-        return response()->json($data);
-    }
-
-    // ── Chart: top 10 produk by revenue ───────────────────────────────────────
-    public function topProducts(Request $request)
-    {
-        $limit = $request->get('limit', 10);
-
-        $data = FactPenjualan::select(
-                'dim_produk.product_name',
-                'dim_produk.product_line',
-                DB::raw('SUM(fact_penjualan.revenue) as revenue'),
-                DB::raw('SUM(fact_penjualan.units_sold) as units')
-            )
-            ->join('dim_produk', 'fact_penjualan.dim_produk_id', '=', 'dim_produk.id')
-            ->groupBy('dim_produk.product_name', 'dim_produk.product_line')
-            ->orderByDesc('revenue')
-            ->limit($limit)
-            ->get();
-
-        return response()->json($data);
-    }
-
-    // ── Chart: revenue per region ─────────────────────────────────────────────
-    public function regionSplit()
-    {
-        $data = FactPenjualan::select(
-                'dim_pelanggan.region',
-                DB::raw('SUM(fact_penjualan.revenue) as revenue'),
-                DB::raw('COUNT(*) as orders')
-            )
-            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-            ->groupBy('dim_pelanggan.region')
-            ->orderByDesc('revenue')
-            ->get();
-
-        return response()->json($data);
-    }
-
-    // ── Chart: gender split ───────────────────────────────────────────────────
-    public function genderSplit()
-    {
-        $data = FactPenjualan::select(
-                'dim_pelanggan.gender_category',
-                DB::raw('SUM(fact_penjualan.revenue) as revenue'),
-                DB::raw('COUNT(*) as orders')
-            )
-            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-            ->groupBy('dim_pelanggan.gender_category')
-            ->get();
-
-        return response()->json($data);
-    }
-
-    // ── Chart: channel split ──────────────────────────────────────────────────
-    public function channelSplit()
-    {
-        $data = FactPenjualan::select(
-                'sales_channel',
-                DB::raw('SUM(revenue) as revenue'),
-                DB::raw('COUNT(*) as orders')
-            )
-            ->groupBy('sales_channel')
-            ->get();
-
-        return response()->json($data);
-    }
-
-    // ── Tabel transaksi dengan filter & pagination ────────────────────────────
-    public function transactions(Request $request)
-    {
+        // Query Base
         $query = FactPenjualan::with(['produk', 'pelanggan', 'waktu'])
-            ->when($request->region, fn($q) => $q->byRegion($request->region))
-            ->when($request->channel, fn($q) => $q->byChannel($request->channel))
-            ->when($request->year, fn($q) => $q->byYear($request->year));
+            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
+            ->join('dim_produk', 'fact_penjualan.dim_produk_id', '=', 'dim_produk.id');
 
-        return response()->json(
-            $query->orderByDesc('created_at')->paginate(20)
-        );
-    }
+        // Filters
+        if ($year) $query->where('dim_waktu.tahun', $year);
+        if ($region) $query->where('dim_pelanggan.region', $region);
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('fact_penjualan.order_id', 'like', "%$search%")
+                  ->orWhere('dim_produk.product_name', 'like', "%$search%");
+            });
+        }
 
-    // ── Export CSV ────────────────────────────────────────────────────────────
-    public function export(Request $request)
-    {
-        $data = FactPenjualan::with(['produk', 'pelanggan', 'waktu'])
-            ->when($request->year, fn($q) => $q->byYear($request->year))
-            ->get();
+        // Transactions (Paginated)
+        $transactions = (clone $query)->orderByDesc('fact_penjualan.id')->paginate(10);
 
-        $filename = 'nike_penjualan_' . now()->format('Ymd_His') . '.csv';
+        // KPIs Calculation
+        $stats = (clone $query)->select(
+            DB::raw('SUM(fact_penjualan.revenue) as total_revenue'),
+            DB::raw('SUM(fact_penjualan.profit) as total_profit'),
+            DB::raw('COUNT(fact_penjualan.id) as total_orders'),
+            DB::raw('AVG(fact_penjualan.revenue) as avg_order')
+        )->first();
 
-        $headers = [
-            'Content-Type'        => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        $margin = $stats->total_revenue > 0 ? ($stats->total_profit / $stats->total_revenue) * 100 : 0;
+
+        $kpis = [
+            ['label' => 'TOTAL REVENUE', 'value' => '$' . number_format($stats->total_revenue / 1000, 1) . 'K'],
+            ['label' => 'TOTAL PROFIT', 'value' => '$' . number_format($stats->total_profit / 1000, 1) . 'K'],
+            ['label' => 'TOTAL ORDERS', 'value' => number_format($stats->total_orders)],
+            ['label' => 'AVG ORDER', 'value' => '$' . number_format($stats->avg_order)],
+            ['label' => 'PROFIT MARGIN', 'value' => number_format($margin, 1) . '%'],
         ];
 
-        $callback = function () use ($data) {
+        // Charts Data
+        $charts = [
+            'trends' => $this->getTrends($year, $region),
+            'products' => $this->getTopProducts($year, $region),
+            'regions' => $this->getRegionSplit($year),
+            'gender' => $this->getGenderSplit($year, $region),
+            'channel' => $this->getChannelSplit($year, $region),
+        ];
+
+        return response()->json([
+            'transactions' => $transactions,
+            'charts' => $charts,
+            'kpis' => $kpis,
+        ]);
+    }
+
+    private function getTrends($year, $region)
+    {
+        $q = FactPenjualan::select(
+            'dim_waktu.nama_bulan',
+            DB::raw('SUM(fact_penjualan.revenue) as revenue'),
+            DB::raw('SUM(fact_penjualan.profit) as profit')
+        )
+        ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+        ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
+        ->groupBy('dim_waktu.bulan', 'dim_waktu.nama_bulan')
+        ->orderBy('dim_waktu.bulan');
+
+        if ($year) $q->where('dim_waktu.tahun', $year);
+        if ($region) $q->where('dim_pelanggan.region', $region);
+
+        $res = $q->get();
+        return [
+            'labels' => $res->pluck('nama_bulan')->map(fn($m) => substr($m, 0, 3)),
+            'revenue' => $res->pluck('revenue'),
+            'profit' => $res->pluck('profit'),
+        ];
+    }
+
+    private function getTopProducts($year, $region)
+    {
+        $q = FactPenjualan::select('dim_produk.product_name', DB::raw('SUM(fact_penjualan.revenue) as revenue'))
+            ->join('dim_produk', 'fact_penjualan.dim_produk_id', '=', 'dim_produk.id')
+            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
+            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+            ->groupBy('dim_produk.product_name')
+            ->orderByDesc('revenue')
+            ->limit(10);
+
+        if ($year) $q->where('dim_waktu.tahun', $year);
+        if ($region) $q->where('dim_pelanggan.region', $region);
+
+        $res = $q->get();
+        return [
+            'labels' => $res->pluck('product_name')->map(fn($n) => strlen($n) > 12 ? substr($n, 0, 12).'...' : $n),
+            'data' => $res->pluck('revenue'),
+        ];
+    }
+
+    private function getRegionSplit($year)
+    {
+        $q = FactPenjualan::select('dim_pelanggan.region', DB::raw('SUM(fact_penjualan.revenue) as revenue'))
+            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
+            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+            ->groupBy('dim_pelanggan.region');
+
+        if ($year) $q->where('dim_waktu.tahun', $year);
+
+        $res = $q->get();
+        return [
+            'labels' => $res->pluck('region'),
+            'data' => $res->pluck('revenue'),
+        ];
+    }
+
+    private function getGenderSplit($year, $region)
+    {
+        $q = FactPenjualan::select('dim_pelanggan.gender_category', DB::raw('SUM(fact_penjualan.revenue) as revenue'))
+            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
+            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+            ->groupBy('dim_pelanggan.gender_category');
+
+        if ($year) $q->where('dim_waktu.tahun', $year);
+        if ($region) $q->where('dim_pelanggan.region', $region);
+
+        $res = $q->get();
+        return [
+            'labels' => $res->pluck('gender_category'),
+            'data' => $res->pluck('revenue'),
+        ];
+    }
+
+    private function getChannelSplit($year, $region)
+    {
+        $q = FactPenjualan::select('sales_channel', DB::raw('SUM(revenue) as revenue'))
+            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
+            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+            ->groupBy('sales_channel');
+
+        if ($year) $q->where('dim_waktu.tahun', $year);
+        if ($region) $q->where('dim_pelanggan.region', $region);
+
+        $res = $q->get();
+        return [
+            'labels' => $res->pluck('sales_channel'),
+            'data' => $res->pluck('revenue'),
+        ];
+    }
+
+    public function export(Request $request)
+    {
+        $data = FactPenjualan::with(['produk', 'pelanggan', 'waktu'])->get();
+        $filename = 'analytics_export_' . now()->timestamp . '.csv';
+        $headers = ["Content-Type" => "text/csv", "Content-Disposition" => "attachment; filename=$filename"];
+
+        return response()->stream(function() use ($data) {
             $file = fopen('php://output', 'w');
-
-            // Header CSV
-            fputcsv($file, [
-                'Order ID', 'Tanggal', 'Produk', 'Product Line',
-                'Region', 'Gender', 'Channel', 'Units', 'Revenue', 'Profit', 'Discount',
-            ]);
-
+            fputcsv($file, ['Order ID', 'Date', 'Product', 'Region', 'Revenue', 'Profit']);
             foreach ($data as $row) {
-                fputcsv($file, [
-                    $row->order_id,
-                    $row->waktu?->order_date,
-                    $row->produk?->product_name,
-                    $row->produk?->product_line,
-                    $row->pelanggan?->region,
-                    $row->pelanggan?->gender_category,
-                    $row->sales_channel,
-                    $row->units_sold,
-                    $row->revenue,
-                    $row->profit,
-                    $row->discount,
-                ]);
+                fputcsv($file, [$row->order_id, $row->waktu?->order_date, $row->produk?->product_name, $row->pelanggan?->region, $row->revenue, $row->profit]);
             }
-
             fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        }, 200, $headers);
     }
 }
