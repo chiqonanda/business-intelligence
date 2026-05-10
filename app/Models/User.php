@@ -10,6 +10,9 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    /**
+     * The attributes that are mass assignable.
+     */
     protected $fillable = [
         'name',
         'email',
@@ -17,59 +20,30 @@ class User extends Authenticatable
         'role',
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    /**
+     * Get the attributes that should be cast.
+     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
         ];
     }
 
-    // ── Role helpers ──────────────────────────────────────────────
-
-    public function isSuperAdmin(): bool
+    /**
+     * Check if user has a given role.
+     */
+    public function hasRole(string ...$roles): bool
     {
-        return $this->role === 'super_admin';
-    }
-
-    public function isAnalyst(): bool
-    {
-        return $this->role === 'analyst';
-    }
-
-    public function isManager(): bool
-    {
-        return $this->role === 'manager';
-    }
-
-    public function isStaff(): bool
-    {
-        return $this->role === 'staff';
-    }
-
-    public function hasRole(string|array $roles): bool
-    {
-        return in_array($this->role, (array) $roles);
-    }
-
-    // Super admin bisa akses semua yang analyst bisa
-    public function canAccessAnalytics(): bool
-    {
-        return $this->hasRole(['super_admin', 'analyst']);
-    }
-
-    public function canUploadCsv(): bool
-    {
-        return $this->hasRole(['super_admin', 'staff']);
-    }
-
-    public function canManageUsers(): bool
-    {
-        return $this->isSuperAdmin();
+        return in_array($this->role, $roles);
     }
 }

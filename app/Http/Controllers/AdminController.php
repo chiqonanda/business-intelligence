@@ -4,64 +4,73 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 
 class AdminController extends Controller
 {
+    private array $roles = ['super_admin', 'analyst', 'manager', 'staff'];
+
     public function index()
     {
+        $users = User::orderBy('created_at', 'asc')->get();
+
         return Inertia::render('Dashboard/Admin', [
-            'users' => User::orderBy('role')->orderBy('name')->get(),
-            'roles' => ['super_admin', 'analyst', 'manager', 'staff']
+            'users' => $users,
+            'roles' => $this->roles,
         ]);
-    }
-
-    public function users()
-    {
-        return response()->json(
-            User::orderBy('role')->orderBy('name')->get()
-        );
-    }
-
-    public function updateRole(Request $request, User $user)
-    {
-        $request->validate([
-            'role' => ['required', 'in:super_admin,analyst,manager,staff'],
-        ]);
-
-        $user->update(['role' => $request->role]);
-
-        return back()->with('success', "Role {$user->name} berhasil diubah ke {$request->role}.");
-    }
-
-    public function destroyUser(User $user)
-    {
-        // Jangan hapus diri sendiri
-        if ($user->id === auth()->id()) {
-            return back()->withErrors(['error' => 'Tidak bisa menghapus akun sendiri.']);
-        }
-
-        $user->delete();
-
-        return back()->with('success', "User {$user->name} berhasil dihapus.");
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'role' => 'required|in:super_admin,analyst,manager,staff',
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', Rules\Password::defaults()],
+            'role'     => ['required', 'in:' . implode(',', $this->roles)],
         ]);
 
         User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-            'role' => $request->role,
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'password' => Hash::make($request->password),
+            'role'     => $request->role,
         ]);
 
-        return back()->with('success', "User {$request->name} berhasil ditambahkan.");
+        return back()->with('success', 'Operator deployed successfully.');
+    }
+
+    public function updateRole(Request $request, User $user)
+    {
+        $request->validate([
+            'role' => ['required', 'in:' . implode(',', $this->roles)],
+        ]);
+
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if ($user->id === $currentUser->id && $request->role !== 'super_admin') {
+            return back()->with('error', 'Cannot change your own role.');
+        }
+
+        $user->update(['role' => $request->role]);
+
+        return back()->with('success', 'Role updated successfully.');
+    }
+
+    public function destroyUser(User $user)
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if ($user->id === $currentUser->id) {
+            return back()->with('error', 'Cannot delete your own account.');
+        }
+
+        $user->delete();
+
+        return back()->with('success', 'Operator terminated.');
     }
 }
