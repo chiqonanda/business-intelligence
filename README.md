@@ -34,7 +34,7 @@ cd d:\github\business-intelligence
 ```
 
 ### 2. Buat database MySQL
-Buat database baru di Laragon (atau tool lain) dengan nama `laravel`.
+Buat database baru di Laragon (atau tool lain) dengan nama `business_intelligence`.
 
 ### 3. Salin file environment
 ```bash
