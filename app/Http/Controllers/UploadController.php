@@ -19,8 +19,20 @@ class UploadController extends Controller
     public function index()
     {
         return Inertia::render('Dashboard/CSVUpload', [
+            'stats' => $this->getStats(),
             'upload_history' => $this->getUploadHistory(),
         ]);
+    }
+
+    private function getStats(): array
+    {
+        return [
+            'total_files' => UploadLog::count(),
+            'total_rows' => UploadLog::sum('rows_total'),
+            'data_valid' => UploadLog::sum('rows_inserted'),
+            'data_error' => UploadLog::sum('rows_skipped'),
+            'last_upload' => UploadLog::latest()->first()?->created_at?->diffForHumans() ?? 'Never',
+        ];
     }
 
     public function store(Request $request)

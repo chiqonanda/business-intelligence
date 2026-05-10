@@ -14,8 +14,13 @@ class DashboardController extends Controller
     {
         return Inertia::render('Dashboard/Overview', [
             'stats' => $this->getStats(),
-            'latestTransactions' => $this->getLatestTransactions(),
-            'topProducts' => $this->getTopProducts(),
+            'latest_transactions' => $this->getLatestTransactions(),
+            'top_products' => $this->getTopProducts(),
+            'charts' => [
+                'monthly' => $this->getMonthlyTrends(),
+                'region' => $this->getRegionSales(),
+                'channel' => $this->getChannelSales(),
+            ]
         ]);
     }
 
@@ -42,8 +47,8 @@ class DashboardController extends Controller
                 'region' => $row->pelanggan?->region,
                 'sales_channel' => $row->sales_channel,
                 'units_sold' => $row->units_sold,
-                'revenue' => $row->revenue,
-                'profit' => $row->profit,
+                'revenue' => (float)$row->revenue,
+                'profit' => (float)$row->profit,
             ])
             ->toArray();
     }
@@ -59,16 +64,58 @@ class DashboardController extends Controller
                 DB::raw('SUM(fact_penjualan.units_sold) as total_units'),
             )
             ->groupBy('fact_penjualan.dim_produk_id', 'dim_produk.product_name', 'dim_produk.product_line')
-            ->orderByDesc('total_revenue')
+            ->orderByDesc('total_units')
             ->limit(5)
             ->get()
             ->map(fn($row) => [
                 'product_name' => $row->product_name,
                 'product_line' => $row->product_line,
-                'revenue' => $row->total_revenue,
-                'units' => $row->total_units,
+                'revenue' => (float)$row->total_revenue,
+                'units' => (int)$row->total_units,
             ])
             ->toArray();
+    }
+
+    private function getMonthlyTrends(): array
+    {
+        $res = FactPenjualan::select(
+            'dim_waktu.nama_bulan',
+            DB::raw('SUM(revenue) as revenue')
+        )
+        ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+        ->groupBy('dim_waktu.bulan', 'dim_waktu.nama_bulan')
+        ->orderBy('dim_waktu.bulan')
+        ->get();
+
+        return [
+            'labels' => $res->pluck('nama_bulan'),
+            'data' => $res->pluck('revenue')->map(fn($v) => (float)$v),
+        ];
+    }
+
+    private function getRegionSales(): array
+    {
+        $res = FactPenjualan::select('dim_pelanggan.region', DB::raw('SUM(revenue) as revenue'))
+            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
+            ->groupBy('dim_pelanggan.region')
+            ->get();
+
+        return [
+            'labels' => $res->pluck('region'),
+            'data' => $res->pluck('revenue')->map(fn($v) => (float)$v),
+        ];
+    }
+
+    private function getChannelSales(): array
+    {
+        $res = FactPenjualan::select('sales_channel', DB::raw('SUM(revenue) as revenue'))
+            ->groupBy('sales_channel')
+            ->get();
+
+        return [
+            'labels' => $res->pluck('sales_channel'),
+            'data' => $res->pluck('revenue')->map(fn($v) => (float)$v),
+        ];
     }
 
     private function getStats(): array
@@ -77,10 +124,10 @@ class DashboardController extends Controller
         $totalOrders = FactPenjualan::count();
 
         return [
-            'total_revenue'   => $totalRevenue,
-            'total_profit'    => FactPenjualan::sum('profit'),
+            'total_revenue'   => (float)$totalRevenue,
+            'total_profit'    => (float)FactPenjualan::sum('profit'),
             'total_orders'    => $totalOrders,
-            'total_units'     => FactPenjualan::sum('units_sold'),
+            'total_units'     => (int)FactPenjualan::sum('units_sold'),
             'avg_order_value' => $totalOrders ? round($totalRevenue / $totalOrders, 2) : 0,
             'profit_margin'   => $this->profitMargin(),
             'top_channel'     => $this->topChannel(),
