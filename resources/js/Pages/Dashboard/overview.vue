@@ -8,42 +8,69 @@ const props = defineProps({
   stats: Object,
   latest_transactions: Array,
   top_products: Array,
+  review_stats: Object,
   charts: Object,
 })
 
 const trendChart = ref(null)
 const regionChart = ref(null)
 const channelChart = ref(null)
+const reviewChart = ref(null)
 
 const formatCurrency = (val) => {
+  if (val === 'HIDDEN' || val === '***') return '••••••'
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0)
 }
 
 onMounted(() => {
+  const isGuest = props.stats.is_guest;
+
   // Monthly Trend
   new Chart(trendChart.value, {
     type: 'line',
     data: {
       labels: props.charts.monthly.labels,
       datasets: [{
-        label: 'Revenue',
+        label: isGuest ? 'Trend (Masked)' : 'Revenue',
         data: props.charts.monthly.data,
-        borderColor: '#d9ff00',
-        backgroundColor: 'rgba(217, 255, 0, 0.1)',
-        fill: true,
-        tension: 0.4,
-        borderWidth: 3,
+        borderColor: isGuest ? '#3f3f46' : '#d9ff00',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.5,
+        borderWidth: 4,
         pointRadius: 0,
-        pointHoverRadius: 6,
+        pointHoverRadius: isGuest ? 0 : 8,
+        pointHoverBackgroundColor: '#d9ff00',
+        pointHoverBorderColor: '#000',
+        pointHoverBorderWidth: 4,
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: { 
+        legend: { display: false },
+        tooltip: { 
+            enabled: !isGuest,
+            backgroundColor: '#000',
+            titleFont: { family: 'Outfit', weight: '900' },
+            bodyFont: { family: 'Outfit' },
+            padding: 15,
+            displayColors: false,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.1)'
+        }
+      },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#52525b', font: { weight: 'bold' } } },
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#52525b', font: { weight: 'bold' } } }
+        x: { grid: { display: false }, ticks: { color: '#52525b', font: { weight: '900', size: 10 } } },
+        y: { 
+          grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, 
+          ticks: { 
+            display: !isGuest,
+            color: '#52525b', 
+            font: { weight: '900', size: 10 } 
+          } 
+        }
       }
     }
   })
@@ -54,17 +81,24 @@ onMounted(() => {
     data: {
       labels: props.charts.region.labels,
       datasets: [{
-        data: props.charts.region.data,
-        backgroundColor: ['#d9ff00', '#27272a', '#3f3f46', '#52525b', '#71717a'],
-        borderWidth: 0,
-        hoverOffset: 20
+        data: isGuest ? props.charts.region.data.map(() => 1) : props.charts.region.data,
+        backgroundColor: isGuest ? ['#18181b', '#27272a', '#3f3f46', '#52525b', '#71717a'] : ['#d9ff00', '#ffffff', '#3f3f46', '#52525b', '#71717a'],
+        borderWidth: 5,
+        borderColor: '#000',
+        hoverOffset: isGuest ? 0 : 30
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { color: '#a1a1aa', usePointStyle: true, font: { weight: 'bold', size: 10 } } } },
-      cutout: '70%'
+      plugins: { 
+        legend: { 
+            position: 'bottom', 
+            labels: { color: '#a1a1aa', usePointStyle: true, font: { weight: '900', size: 10, family: 'Outfit' }, padding: 20 } 
+        },
+        tooltip: { enabled: !isGuest }
+      },
+      cutout: '80%'
     }
   })
 
@@ -74,20 +108,55 @@ onMounted(() => {
     data: {
       labels: props.charts.channel.labels,
       datasets: [{
-        label: 'Revenue',
+        label: 'Volume',
         data: props.charts.channel.data,
-        backgroundColor: '#d9ff00',
-        borderRadius: 4,
+        backgroundColor: isGuest ? '#18181b' : '#d9ff00',
+        borderRadius: 0,
+        barThickness: 12,
       }]
     },
     options: {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: { 
+        legend: { display: false },
+        tooltip: { enabled: !isGuest }
+      },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#52525b', font: { weight: 'bold' } } },
-        y: { grid: { display: false }, ticks: { color: '#a1a1aa', font: { weight: 'bold' } } }
+        x: { 
+            grid: { display: false }, 
+            ticks: { display: !isGuest, color: '#52525b', font: { weight: '900' } } 
+        },
+        y: { grid: { display: false }, ticks: { color: '#a1a1aa', font: { weight: '900', size: 10 } } }
+      }
+    }
+  })
+
+  // Review Sentiment
+  new Chart(reviewChart.value, {
+    type: 'polarArea',
+    data: {
+      labels: props.charts.reviews.labels,
+      datasets: [{
+        data: props.charts.reviews.data,
+        backgroundColor: [
+          'rgba(217, 255, 0, 0.1)',
+          'rgba(217, 255, 0, 0.3)',
+          'rgba(217, 255, 0, 0.5)',
+          'rgba(217, 255, 0, 0.7)',
+          'rgba(217, 255, 0, 0.9)',
+        ],
+        borderWidth: 2,
+        borderColor: '#000',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#a1a1aa', font: { weight: '900', size: 10, family: 'Outfit' } } } },
+      scales: {
+        r: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { display: false }, angleLines: { color: 'rgba(255,255,255,0.05)' } }
       }
     }
   })
@@ -96,59 +165,77 @@ onMounted(() => {
 
 <template>
   <AppLayout>
-    <Head title="Nike BI Control" />
+    <Head title="Nike Intel Hub" />
+
+    <!-- GUEST NOTICE -->
+    <div v-if="stats.is_guest" class="mb-12 p-6 glass-effect flex items-center justify-between animate-slide-up">
+        <div class="flex items-center gap-6">
+            <div class="h-3 w-3 rounded-full bg-[#d9ff00] shadow-[0_0_15px_#d9ff00] animate-pulse"></div>
+            <div>
+                <p class="text-[11px] font-black text-[#d9ff00] uppercase tracking-[0.3em] mb-1 italic">Authorized Eyes Only</p>
+                <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Global financial data is currently masked. Please authenticate for full mission clearance.</p>
+            </div>
+        </div>
+        <Link :href="route('login')" class="btn-premium !py-3 !px-8 !bg-[#d9ff00] !text-black hover:!bg-white">
+          Authenticate
+        </Link>
+    </div>
 
     <!-- HERO SECTION -->
-    <div class="mb-16 animate-slide-up">
-      <div class="flex items-center gap-4 mb-4">
-         <div class="h-[2px] w-12 bg-[#d9ff00]"></div>
-         <p class="text-xs font-black text-[#d9ff00] uppercase tracking-[0.5em]">Global Sales Network</p>
+    <div class="mb-12 animate-slide-up" :class="{'opacity-40': stats.is_guest}">
+      <div class="flex items-center gap-6 mb-8">
+         <div class="h-[1px] w-20 bg-[#d9ff00]"></div>
+         <p class="text-[10px] font-black text-[#d9ff00] uppercase tracking-[0.6em]">Just Do It. Data Driven.</p>
       </div>
-      <h1 class="page-title-premium mb-6 uppercase">Market <br/> Intelligence.</h1>
-      <p class="max-w-2xl text-zinc-500 font-bold text-lg leading-relaxed uppercase tracking-tight">
-        Real-time visibility into Nike's global sales performance. <br/> Monitoring volume, revenue, and regional dominance.
+      <h1 class="page-title-premium mb-8">Market <br/> <span class="text-stroke">Intelligence.</span></h1>
+      <p class="max-w-3xl text-zinc-500 font-bold text-base md:text-xl leading-relaxed uppercase tracking-tight">
+        Monitoring Nike's global heartbeat. Real-time visibility into sales volume, <br class="hidden md:block"/> product dominance, and the voice of our athletes worldwide.
       </p>
     </div>
 
     <!-- METRICS GRID -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 animate-slide-up" style="animation-delay: 0.1s">
-      <!-- Revenue -->
-      <div class="card-premium p-8 group relative overflow-hidden">
-        <div class="absolute top-0 right-0 p-4 text-[30px] font-black text-white/5 italic select-none">USD</div>
-        <p class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4 group-hover:text-[#d9ff00] transition-colors">TOTAL REVENUE</p>
-        <p class="text-4xl font-black italic tracking-tighter">{{ formatCurrency(stats.total_revenue) }}</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-slide-up" style="animation-delay: 0.1s">
+      <!-- Revenue (MEMBER ONLY) -->
+      <div v-if="!stats.is_guest" class="card-premium p-6 group relative overflow-hidden">
+        <div class="absolute -top-4 -right-4 p-8 text-[60px] font-black text-white/5 italic select-none font-header">$$</div>
+        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] mb-6 group-hover:text-[#d9ff00] transition-colors">Net Revenue Generated</p>
+        <p class="text-5xl font-black italic tracking-tighter font-header">{{ formatCurrency(stats.total_revenue) }}</p>
       </div>
 
       <!-- Units -->
-      <div class="card-premium p-8 group relative overflow-hidden">
-        <p class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4 group-hover:text-[#d9ff00] transition-colors">UNITS SOLD</p>
-        <p class="text-4xl font-black italic tracking-tighter">{{ (stats.total_units || 0).toLocaleString() }}</p>
+      <div class="card-premium p-6 group relative overflow-hidden" :class="{'lg:col-span-2': stats.is_guest}">
+        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] mb-6 group-hover:text-[#d9ff00] transition-colors">Global Units Moved</p>
+        <p class="text-5xl font-black italic tracking-tighter font-header">{{ (stats.total_units || 0).toLocaleString() }}</p>
+        <p class="text-[9px] font-bold text-zinc-700 uppercase tracking-widest mt-2">Inventory Flow Active</p>
       </div>
 
-      <!-- Top Product -->
-      <div class="card-premium p-8 group relative overflow-hidden bg-[#d9ff00]">
-        <p class="text-[10px] font-black text-black/40 uppercase tracking-[0.3em] mb-4">BEST SELLER</p>
-        <p class="text-2xl font-black italic tracking-tighter text-black uppercase truncate">{{ top_products[0]?.product_name || 'N/A' }}</p>
-        <p class="text-[10px] font-bold text-black/60 uppercase tracking-widest mt-1">{{ top_products[0]?.units.toLocaleString() }} UNITS</p>
+      <!-- Avg Rating -->
+      <div class="card-premium p-6 group relative overflow-hidden bg-[#d9ff00] !border-none">
+        <p class="text-[9px] font-black text-black/40 uppercase tracking-[0.4em] mb-6">Athlete Satisfaction</p>
+        <p class="text-5xl font-black italic tracking-tighter text-black font-header">{{ review_stats.avg_rating }}</p>
+        <p class="text-[9px] font-bold text-black/60 uppercase tracking-widest mt-2 italic">{{ review_stats.total_reviews.toLocaleString() }} FEEDBACK NODES</p>
       </div>
 
-      <!-- Active Status -->
-      <div class="card-premium p-8 group relative overflow-hidden border-[#d9ff00]/20">
-        <p class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-4 group-hover:text-[#d9ff00] transition-colors">SYSTEM STATUS</p>
-        <div class="flex items-center gap-3">
-          <div class="h-2 w-2 rounded-full bg-[#d9ff00] animate-pulse shadow-[0_0_8px_#d9ff00]"></div>
-          <p class="text-xl font-black italic tracking-tighter uppercase">LIVE FEED</p>
+      <!-- Product Count -->
+      <div class="card-premium p-6 group relative overflow-hidden border-white/10">
+        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] mb-6 group-hover:text-[#d9ff00] transition-colors">Catalog Assets</p>
+        <div class="flex items-center gap-4">
+          <p class="text-5xl font-black italic tracking-tighter uppercase font-header">{{ stats.total_products.toLocaleString() }}</p>
+          <div class="h-3 w-3 rounded-full bg-[#d9ff00] animate-ping shadow-[0_0_15px_#d9ff00]"></div>
         </div>
       </div>
     </div>
 
-    <!-- MAIN CHARTS -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 animate-slide-up" style="animation-delay: 0.2s">
+    <!-- MAIN CHARTS (REVENUE HIDDEN FOR GUESTS) -->
+    <div v-if="!stats.is_guest" class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 animate-slide-up" style="animation-delay: 0.2s">
       <!-- Monthly Trend -->
-      <div class="lg:col-span-2 card-premium p-8 h-[400px] flex flex-col">
-        <div class="flex items-center justify-between mb-8">
-          <h3 class="text-xs font-black uppercase tracking-[0.3em] text-zinc-500">Monthly Revenue Trend</h3>
-          <span class="text-[10px] font-black text-[#d9ff00] bg-white/5 px-2 py-1 italic">FISCAL YEAR 2024</span>
+      <div class="lg:col-span-2 card-premium p-6 h-[400px] flex flex-col">
+        <div class="flex items-center justify-between mb-10">
+          <div>
+            <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-white mb-1">Revenue Trajectory</h3>
+            <p class="text-[8px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Live monthly performance index</p>
+          </div>
+          <span class="badge-premium !text-[#d9ff00] !border-[#d9ff00]/30">Global Sync</span>
         </div>
         <div class="flex-1 min-h-0">
           <canvas ref="trendChart"></canvas>
@@ -156,67 +243,83 @@ onMounted(() => {
       </div>
 
       <!-- Region Split -->
-      <div class="card-premium p-8 h-[400px] flex flex-col">
-        <h3 class="text-xs font-black uppercase tracking-[0.3em] text-zinc-500 mb-8 text-center">Sales by Region</h3>
+      <div class="card-premium p-6 h-[400px] flex flex-col">
+        <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-white mb-10 text-center">Regional Dominance</h3>
         <div class="flex-1 min-h-0">
           <canvas ref="regionChart"></canvas>
         </div>
       </div>
     </div>
 
+    <!-- REVIEW & CHANNEL SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-20 animate-slide-up" style="animation-delay: 0.3s">
+        <!-- Review Sentiment (PUBLIC) -->
+        <div class="card-premium p-10 h-[500px] flex flex-col" :class="{'lg:col-span-3': stats.is_guest}">
+            <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-white mb-10">Athlete Sentiment Radar</h3>
+            <div class="flex-1 min-h-0">
+                <canvas ref="reviewChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Channel Split (MEMBER ONLY) -->
+        <div v-if="!stats.is_guest" class="lg:col-span-2 card-premium p-10 h-[500px] flex flex-col">
+            <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-white mb-10">Channel Distribution</h3>
+            <div class="flex-1 min-h-0">
+                <canvas ref="channelChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     <!-- BOTTOM SECTION -->
-    <div class="grid lg:grid-cols-3 gap-12 animate-slide-up" style="animation-delay: 0.3s">
-      <!-- Top 5 Products -->
+    <div class="grid lg:grid-cols-3 gap-10 animate-slide-up" style="animation-delay: 0.4s">
+      <!-- Top Performer Products -->
       <div>
-        <h3 class="text-xl font-black italic uppercase tracking-tighter mb-8">Top 5 Products</h3>
-        <div class="space-y-4">
+        <div class="flex items-center gap-4 mb-10">
+            <div class="h-8 w-1 bg-[#d9ff00]"></div>
+            <h3 class="text-2xl font-black italic uppercase tracking-tighter font-header">Elite Performers</h3>
+        </div>
+        <div class="space-y-6">
           <div v-for="(product, idx) in top_products" :key="idx" 
-               class="flex items-center justify-between p-5 bg-[#0a0a0a] group hover:bg-[#111] transition-all">
-            <div class="flex items-center gap-4">
-               <span class="text-xl font-black italic text-zinc-800 group-hover:text-[#d9ff00] transition-colors">0{{ idx + 1 }}</span>
+               class="flex items-center justify-between p-4 glass-effect group hover:bg-[#d9ff00]/10 transition-all cursor-pointer">
+            <div class="flex items-center gap-6">
+               <span class="text-3xl font-black italic text-zinc-900 group-hover:text-[#d9ff00] transition-colors font-header">0{{ idx + 1 }}</span>
                <div>
-                 <p class="text-sm font-black uppercase tracking-tight group-hover:text-white">{{ product.product_name }}</p>
-                 <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">{{ product.product_line }}</p>
+                 <p class="text-xs font-black uppercase tracking-tight group-hover:text-white">{{ product.product_name }}</p>
+                 <p class="text-[9px] font-bold text-zinc-700 uppercase tracking-widest mt-1">{{ product.product_line }}</p>
                </div>
             </div>
             <div class="text-right">
-              <p class="text-sm font-black italic">{{ (product.units).toLocaleString() }}</p>
-              <p class="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">UNITS</p>
+              <p class="text-base font-black italic font-header">{{ (product.units).toLocaleString() }}</p>
+              <p class="text-[8px] font-bold text-zinc-700 uppercase tracking-widest">UNITS</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Sales Channel & Live Feed -->
-      <div class="lg:col-span-2 grid md:grid-cols-2 gap-8">
-        <!-- Channel Split -->
-        <div class="card-premium p-8 flex flex-col h-full">
-          <h3 class="text-xs font-black uppercase tracking-[0.3em] text-zinc-500 mb-8">Sales Channel Analysis</h3>
-          <div class="flex-1 min-h-[200px]">
-             <canvas ref="channelChart"></canvas>
+      <!-- Latest Orders -->
+      <div class="lg:col-span-2 flex flex-col">
+        <div class="flex items-center justify-between mb-10">
+          <div class="flex items-center gap-4">
+              <div class="h-8 w-1 bg-white/20"></div>
+              <h3 class="text-2xl font-black italic uppercase tracking-tighter font-header">Live Mission Feed</h3>
           </div>
+          <Link v-if="stats.is_guest" :href="route('login')" class="text-[9px] font-black text-[#d9ff00] hover:text-white uppercase tracking-[0.2em] border-b border-[#d9ff00] pb-1 transition-all">Clearance Required</Link>
         </div>
-
-        <!-- Latest Orders -->
-        <div class="flex flex-col">
-          <div class="flex items-center justify-between mb-8">
-            <h3 class="text-xs font-black uppercase tracking-[0.3em] text-zinc-500">Live Order Feed</h3>
-            <Link :href="route('login')" class="text-[10px] font-black text-[#d9ff00] hover:text-white uppercase tracking-widest border-b border-[#d9ff00] pb-1 transition-all">Login for Details</Link>
-          </div>
-          <div class="space-y-3">
-            <div v-for="tx in latest_transactions" :key="tx.order_id" 
-                 class="flex items-center justify-between p-4 bg-[#0a0a0a]/50 border-l border-white/5">
-              <div class="flex items-center gap-4">
-                 <div class="text-[9px] font-black text-zinc-600 italic">****</div>
-                 <p class="text-[11px] font-black uppercase tracking-tight text-zinc-400">{{ tx.product_name }}</p>
-              </div>
-              <p class="text-[11px] font-black italic text-zinc-600">{{ formatCurrency(tx.revenue) }}</p>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div v-for="tx in latest_transactions" :key="tx.order_id" 
+               class="flex items-center justify-between p-4 bg-white/[0.02] border-l-2 border-white/10 hover:border-[#d9ff00] transition-all group cursor-crosshair">
+            <div class="flex items-center gap-6">
+               <div class="text-[9px] font-black text-zinc-700 italic font-header group-hover:text-[#d9ff00]">#{{ tx.order_id.toString().slice(-4) }}</div>
+               <div class="overflow-hidden">
+                 <p class="text-[12px] font-black uppercase tracking-tight text-zinc-400 group-hover:text-white truncate">{{ tx.product_name }}</p>
+                 <p class="text-[9px] text-zinc-600 uppercase tracking-widest mt-1">{{ tx.region }}</p>
+               </div>
             </div>
+            <p v-if="!stats.is_guest" class="text-sm font-black italic text-[#d9ff00] font-header">{{ formatCurrency(tx.revenue) }}</p>
           </div>
         </div>
       </div>
     </div>
-
   </AppLayout>
 </template>
 

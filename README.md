@@ -1,213 +1,75 @@
-﻿# Nike Business Intelligence Dashboard
+# ⚡ Nike Intelligence Network (NIKE BI)
 
-Aplikasi dashboard Business Intelligence berbasis Laravel + Vue (Inertia.js) untuk analisis data penjualan Nike. Dilengkapi sistem autentikasi berbasis role, upload CSV via web, dan visualisasi data interaktif.
-
----
-
-## Fitur Utama
-
-- **Multi-role access**: `super_admin`, `analyst`, `manager`, `staff`
-- **Dashboard Overview** — metrik penjualan publik (tanpa login)
-- **Analyst Workbench** — grafik interaktif, filter, export CSV
-- **Strategy Hub** — ringkasan eksekutif per kuartal dan region
-- **Data Ingestion** — upload file CSV langsung dari browser
-- **Identity Control** — manajemen akun operator (khusus super_admin)
-- **ETL via CLI** — import CSV lewat Artisan command
+A high-performance Business Intelligence Dashboard built with **Laravel 11**, **Vue 3 (Inertia.js)**, and **TailwindCSS**. This system is designed for deep analysis of Nike's global sales, product catalog, and customer sentiment.
 
 ---
 
-## Persyaratan
+## 🚀 Key Features
 
-- PHP >= 8.2
-- Composer
-- Node.js >= 18 + NPM
-- MySQL (Laragon / XAMPP / dll)
+### 📡 Data Intelligence
+- **Smart Ingestion Pipeline**: Upload CSV files directly. System features **Auto-Detection** (identifies file types based on headers) and **Smart Mapping** (fuzzy matching for varied column names).
+- **Star Schema Architecture**: Data is processed into optimized `Fact` and `Dimension` tables for high-speed analytical queries.
+- **Support for Multi-Data Nodes**: 
+  - `SALES`: Transactional data and revenue metrics.
+  - `PRODUCTS`: Full inventory catalog with image CDN support.
+  - `REVIEWS`: Customer feedback and sentiment analysis.
+
+### 🔐 Security & Access Control
+- **Multi-Tier RBAC**: Distinct roles for `Super Admin`, `Analyst`, `Manager`, and `Staff`.
+- **Public Privacy Mode**: Guests (non-logged users) see a "Teaser" dashboard. Sensitive financial data (Revenue, Profit, Exact Order IDs) is automatically hidden.
+- **Identity Terminal**: Centralized user management restricted to Super Admins.
+
+### 📊 Advanced Analytics
+- **Market Intelligence**: Real-time charts for monthly trends, regional dominance, and channel performance.
+- **Customer Sentiment**: Polar area analysis of star ratings and fit feedback.
+- **Top Performer Tracking**: Automated ranking of products by volume and revenue.
 
 ---
 
-## Setup Setelah Clone
+## 🛠️ Technical Stack
 
-### 1. Clone repository
+- **Backend**: Laravel 11 (PHP 8.2+)
+- **Frontend**: Vue 3 + Inertia.js (Composition API)
+- **Styling**: Vanilla CSS + Tailwind (Premium Dark Aesthetics)
+- **Charts**: Chart.js 4+
+- **Database**: MySQL (Optimized Star Schema)
+
+---
+
+## 📦 Installation & Setup
+
+### 1. Initialize Repository
 ```bash
-git clone <repo-url> d:\github\business-intelligence
-cd d:\github\business-intelligence
+git clone <repo-url>
+cd business-intelligence
+composer install
+npm install
 ```
 
-### 2. Buat database MySQL
-Buat database baru di Laragon (atau tool lain) dengan nama `business_intelligence`.
-
-### 3. Salin file environment
-```bash
-copy .env.example .env
-```
-
-### 4. Sesuaikan file `.env`
+### 2. Environment Configuration
+Copy `.env.example` to `.env` and configure your database settings:
 ```env
-APP_NAME="Nike BI"
-APP_URL=http://127.0.0.1:8000
-
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=laravel
+DB_DATABASE=business_intelligence
 DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-### 5. Install dependency PHP
-```bash
-composer install
-```
-
-### 6. Install dependency frontend
-```bash
-npm install
-```
-
-### 7. Generate app key
+### 3. Database & App Keys
 ```bash
 php artisan key:generate
+php artisan migrate --seed
 ```
+*Note: The seeder will automatically create default accounts and ingest baseline data.*
 
-### 8. Jalankan migration
+### 4. Launch Development Environment
+Run these in separate terminal windows:
 ```bash
-php artisan migrate
-```
-
-### 9. Seed data awal (user + data Nike)
-```bash
-php artisan db:seed
-```
-
-Perintah ini akan membuat 4 akun default dan mengimpor data CSV secara otomatis.
-
-### 10. Jalankan server (2 terminal terpisah)
-```bash
-# Terminal 1 — Backend
 php artisan serve
-
-# Terminal 2 — Frontend (Vite)
 npm run dev
 ```
-
-### 11. Buka aplikasi
-- http://127.0.0.1:8000
-
----
-
-## Akun Default
-
-| Role | Email | Password |
-|------|-------|----------|
-| Super Admin | superadmin@nike.test | password |
-| Analyst | analyst@nike.test | password |
-| Manager | manager@nike.test | password |
-| Staff | staff@nike.test | password |
-
-> Akun baru dibuat oleh Super Admin melalui menu **IDENTITY** — halaman registrasi publik dinonaktifkan.
-
----
-
-## Hak Akses per Role
-
-| Fitur | Super Admin | Analyst | Manager | Staff |
-|-------|:-----------:|:-------:|:-------:|:-----:|
-| Dashboard Overview | ✓ | ✓ | ✓ | ✓ |
-| Analyst Workbench | ✓ | ✓ | — | — |
-| Strategy Hub | ✓ | — | ✓ | — |
-| Data Ingestion (Upload) | ✓ | — | — | ✓ |
-| Identity Control (Admin) | ✓ | — | — | — |
-
----
-
-## Import Data CSV via CLI (Opsional)
-
-Jika ingin mengimpor ulang data CSV tanpa seeder:
-```bash
-php artisan import:nike-csv
-```
-
-Atau tentukan path file sendiri:
-```bash
-php artisan import:nike-csv --file="C:\path\ke\file.csv"
-```
-
-File CSV default: `database/seeders/data/Nike_Sales_Uncleaned.csv`
-
----
-
-## Struktur File Penting
-
-```
-business-intelligence/
-├── app/
-│   ├── Console/Commands/
-│   │   └── ImportNikeCsvCommand.php
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── AdminController.php       ← CRUD akun operator
-│   │   │   ├── AnalystController.php     ← data & chart analyst
-│   │   │   ├── DashboardController.php   ← overview publik
-│   │   │   ├── ManagerController.php     ← strategy hub
-│   │   │   └── UploadController.php      ← upload CSV
-│   │   └── Middleware/
-│   │       ├── HandleInertiaRequests.php ← share flash & auth
-│   │       └── RoleMiddleware.php        ← proteksi per role
-│   ├── Models/
-│   │   ├── User.php
-│   │   ├── DimProduk.php
-│   │   ├── DimPelanggan.php
-│   │   ├── DimWaktu.php
-│   │   └── FactPenjualan.php
-│   └── Services/
-│       └── CsvImportService.php
-├── database/
-│   ├── migrations/
-│   └── seeders/
-│       ├── DatabaseSeeder.php
-│       ├── UserSeeder.php
-│       ├── NikeDataSeeder.php
-│       └── data/
-│           └── Nike_Sales_Uncleaned.csv  ← letakkan file CSV di sini
-├── resources/
-│   └── js/
-│       ├── Layouts/
-│       │   └── AppLayout.vue
-│       └── Pages/
-│           ├── Auth/
-│           │   └── Login.vue
-│           └── Dashboard/
-│               ├── overview.vue          ← dashboard publik
-│               ├── analyst.vue           ← workbench analyst
-│               ├── manager.vue           ← strategy hub
-│               ├── CSVUpload.vue         ← upload data
-│               └── Admin.vue             ← kelola akun
-├── routes/
-│   ├── web.php
-│   ├── api.php
-│   └── auth.php
-├── .env
-├── jsconfig.json
-├── composer.json
-├── package.json
-└── vite.config.js
-```
-
----
-
-## Perintah Penting
-
-```bash
-php artisan migrate          # buat semua tabel
-php artisan migrate:fresh --seed  # reset & isi ulang database
-php artisan db:seed          # jalankan seeder saja
-php artisan import:nike-csv  # import CSV via CLI
-php artisan serve            # jalankan server Laravel
-npm run dev                  # jalankan frontend Vite (development)
-npm run build                # build frontend untuk production
-```
-
----
 
 ## Catatan
 

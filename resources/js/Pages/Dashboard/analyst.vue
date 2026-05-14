@@ -161,7 +161,7 @@ onMounted(() => {
   <AppLayout>
     <Head title="Nike Intel Workbench" />
 
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-10 mb-16 animate-slide-up">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10 animate-slide-up">
       <div>
         <p class="text-[10px] font-black uppercase tracking-[0.5em] text-[#d9ff00] mb-4">Performance Intel</p>
         <h1 class="page-title-premium">WORKBENCH</h1>
@@ -184,17 +184,17 @@ onMounted(() => {
     </div>
 
     <!-- KPI STRIP -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-px bg-white/5 mb-16 animate-slide-up" style="animation-delay: 0.1s">
-      <div v-for="k in kpis" :key="k.label" class="bg-black p-8">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-px bg-white/5 mb-10 animate-slide-up" style="animation-delay: 0.1s">
+      <div v-for="k in kpis" :key="k.label" class="bg-black p-6">
         <p class="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4">{{ k.label }}</p>
         <p class="text-2xl font-black italic tracking-tighter text-white">{{ k.value }}</p>
       </div>
     </div>
 
     <!-- ANALYSIS GRID -->
-    <div class="grid gap-10 lg:grid-cols-3 mb-16 animate-slide-up" style="animation-delay: 0.2s">
+    <div class="grid gap-6 lg:grid-cols-3 mb-10 animate-slide-up" style="animation-delay: 0.2s">
       <!-- Main Visualization -->
-      <div class="lg:col-span-2 card-premium p-10 bg-black">
+      <div class="lg:col-span-2 card-premium p-6 bg-black">
         <div class="flex justify-between items-center mb-10">
           <h3 class="text-xs font-black text-white uppercase tracking-[0.3em]">Revenue Flow Dynamics</h3>
           <div class="flex items-center gap-6">
@@ -214,7 +214,7 @@ onMounted(() => {
       </div>
 
       <!-- Secondary Chart -->
-      <div class="card-premium p-10 bg-black">
+      <div class="card-premium p-6 bg-black">
         <h3 class="text-xs font-black text-white uppercase tracking-[0.3em] mb-10">Product Line Performance</h3>
         <div class="h-[400px]">
           <canvas ref="barRef"></canvas>
@@ -223,8 +223,8 @@ onMounted(() => {
     </div>
 
     <!-- SUB-METRICS -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-10 mb-16 animate-slide-up" style="animation-delay: 0.3s">
-      <div class="card-premium p-10 bg-black text-center">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-slide-up" style="animation-delay: 0.3s">
+      <div class="card-premium p-6 bg-black text-center">
         <h4 class="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-8">Region Distribution</h4>
         <div class="h-48 relative">
            <canvas ref="regionRef"></canvas>
@@ -233,7 +233,7 @@ onMounted(() => {
            </div>
         </div>
       </div>
-      <div class="card-premium p-10 bg-black text-center">
+      <div class="card-premium p-6 bg-black text-center">
         <h4 class="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-8">Demographic Split</h4>
         <div class="h-48 relative">
            <canvas ref="genderRef"></canvas>
@@ -242,7 +242,7 @@ onMounted(() => {
            </div>
         </div>
       </div>
-      <div class="card-premium p-10 bg-black text-center">
+      <div class="card-premium p-6 bg-black text-center">
         <h4 class="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-8">Channel Efficiency</h4>
         <div class="h-48 relative">
            <canvas ref="channelRef"></canvas>
@@ -255,7 +255,7 @@ onMounted(() => {
 
     <!-- DATA TABLE TERMINAL -->
     <div class="card-premium bg-black overflow-hidden animate-slide-up" style="animation-delay: 0.4s">
-      <div class="p-8 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
         <h3 class="text-xs font-black text-white uppercase tracking-[0.3em]">Atomic Transaction Log</h3>
         <div class="relative w-full md:w-80">
           <input 
@@ -297,7 +297,7 @@ onMounted(() => {
       </div>
 
       <!-- PAGINATION TERMINAL -->
-      <div class="p-8 border-t border-white/5 flex justify-between items-center">
+      <div class="p-6 border-t border-white/5 flex justify-between items-center">
         <p class="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Displaying Node {{ (pagination.current_page - 1) * 10 + 1 }} - {{ Math.min(pagination.current_page * 10, pagination.total) }} of {{ pagination.total }}</p>
         <div class="flex items-center gap-1">
           <button @click="goPage(pagination.current_page - 1)" :disabled="pagination.current_page === 1" class="px-4 py-2 bg-white/5 text-[9px] font-black hover:bg-[#d9ff00] hover:text-black disabled:opacity-20 transition-all uppercase tracking-widest">PREV</button>

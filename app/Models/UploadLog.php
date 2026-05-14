@@ -9,6 +9,7 @@ class UploadLog extends Model
     protected $fillable = [
         'filename',
         'original_name',
+        'data_type',
         'status',
         'rows_total',
         'rows_inserted',

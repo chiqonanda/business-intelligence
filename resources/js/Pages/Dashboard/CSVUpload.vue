@@ -1,241 +1,242 @@
 <script setup>
 import { ref } from 'vue'
-import { Head, router } from '@inertiajs/vue3'
+import { Head, router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import axios from 'axios'
 
 const props = defineProps({
-  upload_history: Array
+  upload_history: Array,
+  stats: Object
 })
 
-const fileInput = ref(null)
+const form = useForm({
+  csv_file: null,
+  data_type: 'AUTO-DETECT'
+})
+
 const isDragging = ref(false)
-const uploading = ref(false)
-const progress = ref(0)
-const error = ref(null)
 const success = ref(null)
-
-const triggerFileSelect = () => fileInput.value.click()
-
-const handleFileSelect = (e) => {
-  const file = e.target.files[0]
-  if (file) startUpload(file)
-}
+const error = ref(null)
 
 const handleDrop = (e) => {
   isDragging.value = false
   const file = e.dataTransfer.files[0]
-  if (file) startUpload(file)
+  if (file) form.csv_file = file
 }
 
-const startUpload = async (file) => {
-  if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-    error.value = 'PROTOCOL ERROR: INVALID FILE TYPE. SYSTEM REQUIRES .CSV'
-    return
-  }
-
-  uploading.value = true
-  progress.value = 0
-  error.value = null
-  success.value = null
-
-  const formData = new FormData()
-  formData.append('csv_file', file)
-
-  try {
-    const res = await axios.post(route('upload.store'), formData, {
-      onUploadProgress: (progressEvent) => {
-        progress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-      }
-    })
-    
-    success.value = 'INGESTION COMPLETE: DATA NODE SYNCHRONIZED'
-    // Refresh history
-    router.visit(route('upload.index'), { preserveScroll: true })
-  } catch (err) {
-    error.value = err.response?.data?.message || 'SYSTEM FAILURE: ETL PIPELINE INTERRUPTED'
-  } finally {
-    uploading.value = false
-  }
+const submit = () => {
+  form.post(route('upload.store'), {
+    onSuccess: (page) => {
+      success.value = page.props.flash?.success || 'DATA INGESTION COMPLETE'
+      form.reset()
+    },
+    onError: () => {
+        error.value = 'SYSTEM FAILURE: ETL PIPELINE INTERRUPTED'
+    }
+  })
 }
 
-const handleReset = async () => {
-  if (!confirm('CRITICAL ACTION: PURGE ALL DATA NODES? THIS CANNOT BE UNDONE.')) return
-  
-  try {
-    await axios.delete(route('upload.reset'))
-    success.value = 'DATABASE PURGED: ALL DATA NODES WIPED'
-    router.visit(route('upload.index'))
-  } catch (err) {
-    error.value = 'PURGE FAILURE: SYSTEM ACCESS DENIED'
-  }
+const clearLogs = () => {
+    if (confirm('REMOVE ALL ACTIVITY LOGS?')) {
+        router.delete(route('upload.clear_logs'), {
+            onSuccess: () => success.value = 'HISTORY WIPED'
+        })
+    }
 }
 
-const deleteHistory = async (filename) => {
-  if (!confirm('DELETE THIS SESSION LOG? DATA ALREADY INGESTED WILL REMAIN.')) return
-  
-  try {
-    await axios.delete(route('upload.destroy', { filename }))
-    router.visit(route('upload.index'), { preserveScroll: true })
-  } catch (err) {
-    error.value = 'ACTION FAILED: LOG PROTECTION ACTIVE'
-  }
+const resetData = () => {
+    if (confirm('CRITICAL: PERFORM GLOBAL SYSTEM RESET? ALL NODES WILL BE WIPED.')) {
+        router.delete(route('upload.truncate'), {
+            onSuccess: () => success.value = 'GLOBAL RESET COMPLETE'
+        })
+    }
+}
+
+const deleteFile = (filename) => {
+    if (confirm('DELETE THIS SESSION LOG?')) {
+        router.delete(route('upload.destroy', { filename }), {
+            preserveScroll: true
+        })
+    }
 }
 </script>
 
 <template>
   <AppLayout>
-    <Head title="Nike Data Ingestion" />
+    <Head title="Ingestion Pipeline" />
 
-    <div class="mb-16 animate-slide-up">
-      <p class="text-[10px] font-black uppercase tracking-[0.5em] text-[#d9ff00] mb-4">ETL Operations</p>
-      <h1 class="page-title-premium">DATA INGESTION</h1>
-      <p class="text-zinc-600 font-bold text-sm uppercase tracking-widest mt-4">Inject raw transaction datasets into the Nike global intelligence node.</p>
+    <div class="mb-24 animate-slide-up">
+      <div class="flex items-center gap-6 mb-8">
+         <div class="h-[1px] w-20 bg-[#d9ff00]"></div>
+         <p class="text-[10px] font-black text-[#d9ff00] uppercase tracking-[0.6em]">Operational Data Node</p>
+      </div>
+      <h1 class="page-title-premium mb-8">Data <br/> <span class="text-stroke">Ingestion.</span></h1>
+      <p class="max-w-2xl text-zinc-500 font-bold text-lg leading-relaxed uppercase tracking-tight">
+        Calibrate system nodes by injecting fresh mission data. <br/> Supporting Sales, Product Catalog, and Sentiment feeds.
+      </p>
     </div>
 
     <div class="grid lg:grid-cols-3 gap-12 animate-slide-up" style="animation-delay: 0.1s">
-      <!-- UPLOAD TERMINAL -->
-      <div class="lg:col-span-2 space-y-8">
-        <div 
-          @dragover.prevent="isDragging = true"
-          @dragleave.prevent="isDragging = false"
-          @drop.prevent="handleDrop"
-          class="relative group"
-        >
-          <div 
-            class="card-premium p-20 border-2 border-dashed flex flex-col items-center justify-center text-center transition-all duration-500"
-            :class="[
-              isDragging ? 'border-[#d9ff00] bg-[#d9ff00]/5' : 'border-white/5 bg-black',
-              uploading ? 'opacity-50 pointer-events-none' : ''
-            ]"
-          >
-            <input 
-              ref="fileInput" 
-              type="file" 
-              class="hidden" 
-              accept=".csv" 
-              @change="handleFileSelect"
-            />
-            
-            <div class="h-20 w-20 bg-white/5 flex items-center justify-center mb-8 group-hover:bg-[#d9ff00] transition-colors">
-               <svg class="h-10 w-10 text-zinc-500 group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-               </svg>
-            </div>
-
-            <h3 class="text-xl font-black italic uppercase tracking-tighter text-white mb-2">INITIALIZE UPLOAD</h3>
-            <p class="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-10">DROP SOURCE FILE OR CLICK TO BROWSE</p>
-
-            <button 
-              @click="triggerFileSelect"
-              class="px-10 py-4 bg-white text-black text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#d9ff00] transition-all active:scale-95"
-            >
-              BROWSE FILESYSTEM
-            </button>
-          </div>
-
-          <!-- PROGRESS OVERLAY -->
-          <div v-if="uploading" class="absolute inset-0 bg-black/90 z-20 flex flex-col items-center justify-center p-12">
-            <div class="w-full max-w-md">
-               <div class="flex justify-between items-end mb-4">
-                  <p class="text-[10px] font-black text-[#d9ff00] uppercase tracking-widest animate-pulse">INGESTING DATA...</p>
-                  <p class="text-3xl font-black italic text-white leading-none">{{ progress }}%</p>
-               </div>
-               <div class="h-1 w-full bg-white/5">
-                  <div class="h-full bg-[#d9ff00] transition-all duration-300" :style="{ width: progress + '%' }"></div>
-               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- STATUS MESSAGES -->
-        <div v-if="error" class="p-6 bg-rose-500/10 border-l-4 border-rose-600 animate-slide-up">
-           <div class="flex items-center gap-4">
-              <svg class="h-6 w-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              <p class="text-[10px] font-black text-rose-600 uppercase tracking-widest">{{ error }}</p>
-           </div>
-        </div>
-
-        <div v-if="success" class="p-6 bg-[#d9ff00]/10 border-l-4 border-[#d9ff00] animate-slide-up">
-           <div class="flex items-center gap-4">
-              <svg class="h-6 w-6 text-[#d9ff00]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <p class="text-[10px] font-black text-[#d9ff00] uppercase tracking-widest">{{ success }}</p>
-           </div>
-        </div>
-
-        <!-- DANGER ZONE -->
-        <div class="pt-20 border-t border-white/5">
-           <h3 class="text-[10px] font-black text-rose-600 uppercase tracking-[0.5em] mb-6">DANGER ZONE</h3>
-           <div class="card-premium p-8 bg-black border-rose-900/30 flex flex-col md:flex-row justify-between items-center gap-6">
-              <div>
-                 <p class="text-xs font-black text-white uppercase tracking-widest">PURGE ALL SYSTEM DATA</p>
-                 <p class="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mt-1">This will permanently delete all transactions, products, and customer nodes.</p>
+      <!-- UPLOAD FORM -->
+      <div class="lg:col-span-2">
+        <form @submit.prevent="submit" class="space-y-12">
+          <div class="card-premium p-12 bg-white/[0.01]">
+            <div class="flex flex-col md:flex-row gap-10">
+              <!-- DROPZONE -->
+              <div class="flex-1">
+                 <label for="csv_file" class="block group cursor-pointer"
+                        @dragover.prevent="isDragging = true"
+                        @dragleave.prevent="isDragging = false"
+                        @drop.prevent="handleDrop">
+                    <div class="border-2 border-dashed border-white/5 group-hover:border-[#d9ff00]/30 transition-all p-12 flex flex-col items-center justify-center min-h-[300px] bg-black"
+                         :class="{'border-[#d9ff00]/40 bg-[#d9ff00]/5': isDragging}">
+                       <div v-if="!form.csv_file" class="text-center">
+                          <svg class="h-12 w-12 text-zinc-800 group-hover:text-[#d9ff00] transition-colors mb-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                          <p class="text-xs font-black text-white uppercase tracking-[0.3em] mb-2">Drop Mission CSV</p>
+                          <p class="text-[9px] font-bold text-zinc-700 uppercase tracking-widest">or click to browse local storage</p>
+                       </div>
+                       <div v-else class="text-center">
+                          <div class="h-12 w-12 rounded-full bg-[#d9ff00] flex items-center justify-center mb-6 mx-auto shadow-[0_0_20px_#d9ff00]">
+                             <svg class="h-6 w-6 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 13l4 4L19 7" /></svg>
+                          </div>
+                          <p class="text-xs font-black text-[#d9ff00] uppercase tracking-[0.3em] mb-1">Source Locked</p>
+                          <p class="text-[10px] font-bold text-white truncate max-w-[200px]">{{ form.csv_file.name }}</p>
+                       </div>
+                    </div>
+                    <input id="csv_file" type="file" @input="form.csv_file = $event.target.files[0]" class="hidden" accept=".csv" />
+                 </label>
+                 <div v-if="form.errors.csv_file" class="mt-4 text-[10px] font-black text-rose-500 uppercase tracking-widest italic">! ERR: {{ form.errors.csv_file }}</div>
               </div>
-              <button 
-                @click="handleReset"
-                class="px-8 py-3 bg-rose-600 text-white text-[9px] font-black uppercase tracking-[0.3em] hover:bg-rose-500 transition-all"
-              >
-                RESET SYSTEM
-              </button>
-           </div>
+
+              <!-- CONTROLS -->
+              <div class="md:w-72 flex flex-col justify-center gap-8">
+                 <div>
+                    <label class="text-[9px] font-black text-zinc-600 uppercase tracking-[0.4em] mb-4 block">Target Node</label>
+                    <div class="space-y-3">
+                       <button 
+                          v-for="t in ['AUTO-DETECT', 'SALES', 'PRODUCTS', 'REVIEWS']" 
+                          :key="t"
+                          type="button"
+                          @click="form.data_type = t"
+                          class="w-full text-left px-5 py-3 text-[10px] font-black tracking-widest border transition-all"
+                          :class="form.data_type === t ? 'bg-[#d9ff00] text-black border-[#d9ff00]' : 'bg-black text-zinc-600 border-white/5 hover:border-white/20'"
+                       >
+                          {{ t }}
+                       </button>
+                    </div>
+                 </div>
+
+                 <button type="submit" :disabled="form.processing" class="btn-premium w-full !bg-white !text-black hover:!bg-[#d9ff00] disabled:opacity-20 transition-all active:scale-95">
+                    <span v-if="form.processing">Processing...</span>
+                    <span v-else>Engage Pipeline</span>
+                 </button>
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <!-- STATUS OVERLAYS -->
+        <div v-if="success" class="p-6 bg-[#d9ff00]/10 border-l-4 border-[#d9ff00] animate-slide-up flex justify-between items-center">
+            <p class="text-[10px] font-black text-[#d9ff00] uppercase tracking-widest">{{ success }}</p>
+            <button @click="success = null" class="text-zinc-600 hover:text-white transition-colors">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
         </div>
       </div>
 
-      <!-- INGESTION LOGS -->
-      <div class="space-y-6">
-        <div class="flex justify-between items-center">
-           <h3 class="text-xs font-black text-white uppercase tracking-[0.3em]">Session History</h3>
-           <span class="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">{{ upload_history.length }} NODES</span>
-        </div>
-        
-        <div class="space-y-4">
-          <div v-for="log in upload_history" :key="log.id" class="p-6 bg-[#0a0a0a] border border-white/5 flex justify-between items-center group hover:border-white/20 transition-all">
-            <div class="flex-1">
-              <p class="text-[11px] font-black text-white uppercase tracking-tight group-hover:text-[#d9ff00] transition-colors line-clamp-1 pr-4" :title="log.original_name">
-                 {{ log.original_name }}
-              </p>
-              <div class="flex items-center gap-3 mt-1">
-                 <p class="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">{{ log.size }} • {{ log.uploaded_at }}</p>
-                 <span v-if="log.rows_inserted > 0" class="text-[8px] font-black text-[#d9ff00]/60 uppercase tracking-widest border-l border-white/10 pl-3">
-                    {{ log.rows_inserted.toLocaleString() }} ROWS
-                 </span>
-              </div>
+      <!-- MAINTENANCE / PROTOCOLS -->
+      <div class="space-y-12">
+         <div class="card-premium p-10 border-rose-500/10 hover:border-rose-500/30 group">
+            <h3 class="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-8 italic">Maintenance Node</h3>
+            <div class="space-y-4">
+               <button @click="clearLogs" class="w-full flex items-center justify-between p-4 bg-rose-500/5 hover:bg-rose-500/10 transition-all">
+                  <span class="text-[10px] font-black text-rose-200 uppercase tracking-widest">Wipe Pipeline Logs</span>
+                  <svg class="h-4 w-4 text-rose-500 group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+               </button>
+               <button @click="resetData" class="w-full flex items-center justify-between p-4 bg-rose-500/10 hover:bg-rose-600 hover:text-white transition-all text-rose-500">
+                  <span class="text-[10px] font-black uppercase tracking-widest">Global System Reset</span>
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+               </button>
             </div>
-            
-            <div class="flex items-center gap-6">
-              <!-- STATUS BADGE -->
-              <div class="flex flex-col items-end">
-                 <span 
-                   class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5"
-                   :class="{
-                     'text-[#d9ff00] bg-[#d9ff00]/10': log.status === 'SUCCESS',
-                     'text-amber-500 bg-amber-500/10': log.status === 'PARTIAL',
-                     'text-rose-600 bg-rose-600/10': log.status === 'FAILED'
-                   }"
-                 >
-                   {{ log.status }}
-                 </span>
-                 <p v-if="log.rows_skipped > 0" class="text-[7px] font-bold text-zinc-600 uppercase tracking-widest mt-1">
-                    {{ log.rows_skipped }} SKIPPED
-                 </p>
-              </div>
+         </div>
 
-              <button 
-                @click="deleteHistory(log.filename)"
-                class="h-10 px-4 bg-rose-600/10 border border-rose-600/20 flex items-center justify-center hover:bg-rose-600 group/del transition-all"
-                title="Delete Session Log"
-              >
-                 <svg class="h-4 w-4 text-rose-600 group-hover/del:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                 </svg>
-                 <span class="ml-2 text-[8px] font-black text-rose-600 group-hover/del:text-white uppercase tracking-widest">DELETE</span>
-              </button>
-            </div>
-          </div>
-          <div v-if="!upload_history.length" class="p-10 border border-white/5 text-center text-[10px] font-black text-zinc-600 uppercase tracking-widest italic">
-            NO PRIOR SESSIONS DETECTED
-          </div>
-        </div>
+         <div class="p-10 glass-effect">
+            <h4 class="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6">Protocol Specs</h4>
+            <ul class="space-y-5 text-[9px] font-bold text-zinc-600 uppercase tracking-[0.2em] leading-relaxed">
+               <li class="flex gap-4">
+                  <span class="text-[#d9ff00] font-black">01</span>
+                  Only .CSV file extensions are validated.
+               </li>
+               <li class="flex gap-4">
+                  <span class="text-[#d9ff00] font-black">02</span>
+                  System fuzzy-matches standard Nike headers.
+               </li>
+               <li class="flex gap-4">
+                  <span class="text-[#d9ff00] font-black">03</span>
+                  Auto-detection handles Sales, Product, and Reviews.
+               </li>
+            </ul>
+         </div>
+      </div>
+    </div>
+
+    <!-- LOGS TABLE -->
+    <div class="mt-24 animate-slide-up" style="animation-delay: 0.2s">
+      <div class="flex items-center justify-between mb-10">
+         <div class="flex items-center gap-4">
+            <div class="h-8 w-1 bg-white/20"></div>
+            <h3 class="text-2xl font-black italic uppercase tracking-tighter font-header">Ingestion History</h3>
+         </div>
+         <div class="flex items-center gap-8">
+             <div class="text-right">
+                <p class="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Total Ingested</p>
+                <p class="text-[11px] font-black text-[#d9ff00] font-header">{{ stats.data_valid.toLocaleString() }} ROWS</p>
+             </div>
+             <div class="h-8 w-[1px] bg-white/5"></div>
+             <div class="text-right">
+                <p class="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Audit Trail</p>
+                <p class="text-[11px] font-black text-white font-header italic">ACTIVE</p>
+             </div>
+         </div>
+      </div>
+      
+      <div class="card-premium overflow-hidden">
+         <table class="w-full text-left border-collapse">
+            <thead>
+               <tr class="bg-white/[0.03] border-b border-white/5">
+                  <th class="p-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Timestamp</th>
+                  <th class="p-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Data Node</th>
+                  <th class="p-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Source Resource</th>
+                  <th class="p-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Status</th>
+                  <th class="p-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Load Intensity</th>
+                  <th class="p-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Actions</th>
+               </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+               <tr v-for="log in upload_history" :key="log.id" class="hover:bg-white/[0.01] transition-colors group">
+                  <td class="p-6 text-[11px] font-black text-zinc-500 group-hover:text-white font-header">{{ log.uploaded_at }}</td>
+                  <td class="p-6">
+                     <span class="badge-premium !border-[#d9ff00]/20 !text-[#d9ff00]">{{ log.data_type }}</span>
+                  </td>
+                  <td class="p-6 text-[11px] font-bold text-zinc-600 group-hover:text-zinc-400 truncate max-w-[200px]" :title="log.original_name">{{ log.original_name }}</td>
+                  <td class="p-6">
+                     <div class="flex items-center gap-2">
+                        <div class="h-1.5 w-1.5 rounded-full" 
+                             :class="log.status === 'SUCCESS' ? 'bg-[#d9ff00] shadow-[0_0_8px_#d9ff00]' : 'bg-rose-500'"></div>
+                        <span class="text-[10px] font-black uppercase tracking-widest" 
+                              :class="log.status === 'SUCCESS' ? 'text-[#d9ff00]' : 'text-rose-500'">{{ log.status }}</span>
+                     </div>
+                  </td>
+                  <td class="p-6 text-[11px] font-black italic text-zinc-600 group-hover:text-white font-header">{{ log.rows_inserted.toLocaleString() }} ROWS</td>
+                  <td class="p-6">
+                     <button @click="deleteFile(log.filename)" class="text-[9px] font-black text-zinc-700 hover:text-rose-500 uppercase tracking-widest transition-colors">Remove Log</button>
+                  </td>
+               </tr>
+               <tr v-if="!upload_history.length">
+                  <td colspan="6" class="p-20 text-center text-[10px] font-black text-zinc-800 uppercase tracking-[0.5em]">No ingestion activity detected in local node</td>
+               </tr>
+            </tbody>
+         </table>
       </div>
     </div>
   </AppLayout>

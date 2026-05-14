@@ -32,9 +32,9 @@ class DimWaktu extends Model
     }
 
     // Helper: buat / ambil record DimWaktu dari sebuah tanggal
-    public static function fromDate(string $dateString): self
-{
-    $date = Carbon::parse($dateString)->startOfDay();
+    public static function fromDate(?string $dateString): self
+    {
+        $date = Carbon::parse($dateString ?? now())->startOfDay();
 
     return self::firstOrCreate(
         [

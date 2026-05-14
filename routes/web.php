@@ -4,7 +4,9 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AnalystController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ManagerController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UploadController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +16,8 @@ Route::get('/', function () {
 
 // Dashboard publik
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/catalog', [ProductController::class, 'index'])->name('catalog.index');
+Route::get('/feedback', [ReviewController::class, 'index'])->name('review.index');
 
 Route::middleware('auth')->group(function () {
 
@@ -33,7 +37,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:super_admin,staff')->group(function () {
         Route::get('/dashboard/upload', [UploadController::class, 'index'])->name('upload.index');
         Route::post('/dashboard/upload', [UploadController::class, 'store'])->name('upload.store');
-        Route::delete('/dashboard/upload/reset', [UploadController::class, 'truncate'])->name('upload.reset');
+        Route::delete('/dashboard/upload/clear-logs', [UploadController::class, 'clearLogs'])->name('upload.clear_logs');
+        Route::delete('/dashboard/upload/reset', [UploadController::class, 'truncate'])->name('upload.truncate');
         Route::delete('/dashboard/upload/{filename}', [UploadController::class, 'destroyFile'])->name('upload.destroy');
     });
 

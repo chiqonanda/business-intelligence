@@ -2,17 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
 :root {
-  --bg-main: #050505;
-  --bg-card: #0d0d0d;
-  --bg-sidebar: #080808;
+  --bg-main: #000000;
+  --bg-card: #0a0a0a;
+  --bg-sidebar: #000000;
   --accent-primary: #d9ff00; /* Nike Volt */
   --accent-secondary: #ffffff;
   --text-main: #ffffff;
-  --text-muted: #666666;
-  --border-subtle: rgba(255, 255, 255, 0.03);
+  --text-muted: #71717a;
+  --border-subtle: rgba(255, 255, 255, 0.05);
   --font-sans: 'Plus Jakarta Sans', sans-serif;
-  --font-header: 'Plus Jakarta Sans', sans-serif;
+  --font-header: 'Outfit', sans-serif;
 }
 
 body {
@@ -21,47 +23,77 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
+  overflow-x: hidden;
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #222; border-radius: 0; }
+::-webkit-scrollbar-thumb { background: #1a1a1a; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
 
 @layer components {
   .card-premium {
-    @apply rounded-none bg-[#0d0d0d] border-l-2 border-white/5 transition-all duration-300 hover:border-l-[var(--accent-primary)] shadow-[0_10px_30px_rgba(0,0,0,0.5)];
+    @apply rounded-none bg-[#0a0a0a] border border-white/5 transition-all duration-500 hover:border-white/20 hover:shadow-[0_0_40px_rgba(217,255,0,0.03)];
   }
   
   .btn-premium {
-    @apply px-8 py-3 rounded-none font-black uppercase tracking-widest text-[11px] transition-all duration-300 hover:skew-x-[-10deg] active:scale-95 flex items-center justify-center gap-3;
+    @apply px-10 py-4 rounded-none font-black uppercase tracking-[0.2em] text-[10px] transition-all duration-500 hover:bg-[var(--accent-primary)] hover:text-black active:scale-95 flex items-center justify-center gap-3 relative overflow-hidden;
+  }
+
+  .btn-premium::after {
+    @apply content-[''] absolute inset-0 bg-white/20 translate-x-[-100%] transition-transform duration-700;
+  }
+
+  .btn-premium:hover::after {
+    @apply translate-x-[100%];
   }
   
   .input-premium {
-    @apply bg-[#151515] border border-white/5 rounded-none px-4 py-4 text-xs font-bold focus:border-[var(--accent-primary)] focus:ring-0 outline-none transition-all placeholder:text-zinc-700;
+    @apply bg-black border border-white/10 rounded-none px-6 py-5 text-xs font-bold focus:border-[var(--accent-primary)] focus:ring-0 outline-none transition-all placeholder:text-zinc-800 uppercase tracking-widest;
   }
   
   .badge-premium {
-    @apply px-3 py-1 rounded-none text-[9px] font-black tracking-[0.2em] uppercase bg-white/5 text-white border border-white/10;
+    @apply px-3 py-1 rounded-none text-[8px] font-black tracking-[0.2em] uppercase bg-white/5 text-white border border-white/10 italic;
   }
 
   .page-title-premium {
-    @apply text-5xl font-black italic tracking-tighter uppercase text-white leading-none;
+    @apply text-3xl sm:text-5xl md:text-7xl font-black italic tracking-tighter uppercase text-white leading-[0.8] font-header;
+  }
+
+  .glass-effect {
+    @apply bg-black/60 backdrop-blur-xl border border-white/5;
   }
 }
 
-/* Nike Texture */
+/* Nike Grid Texture */
 .nike-grid {
-  background-image: radial-gradient(#111 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(rgba(217, 255, 0, 0.01) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217, 255, 0, 0.01) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px) skewY(2deg); }
-  to { opacity: 1; transform: translateY(0) skewY(0); }
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .animate-slide-up {
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 1.5s ease forwards;
+}
+
+/* Text Stroke Effect */
+.text-stroke {
+  -webkit-text-stroke: 1px rgba(255,255,255,0.1);
+  color: transparent;
 }

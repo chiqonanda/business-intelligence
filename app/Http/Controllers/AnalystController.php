@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FactPenjualan;
-use App\Models\DimProduk;
-use App\Models\DimPelanggan;
-use App\Models\DimWaktu;
+use App\Models\NikeSale;
+use App\Models\NikeProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -16,8 +14,12 @@ class AnalystController extends Controller
     public function index(): Response
     {
         return Inertia::render('Dashboard/Analyst', [
-            'years' => DimWaktu::distinct()->orderByDesc('tahun')->pluck('tahun'),
-            'regions' => DimPelanggan::distinct()->orderBy('region')->pluck('region'),
+            'years' => NikeSale::whereNotNull('order_date')
+                ->select(DB::raw('YEAR(order_date) as year'))
+                ->distinct()
+                ->orderByDesc('year')
+                ->pluck('year'),
+            'regions' => NikeSale::distinct()->whereNotNull('region')->orderBy('region')->pluck('region'),
         ]);
     }
 
@@ -28,30 +30,27 @@ class AnalystController extends Controller
         $search = $request->get('search');
 
         // Query Base
-        $query = FactPenjualan::with(['produk', 'pelanggan', 'waktu'])
-            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
-            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-            ->join('dim_produk', 'fact_penjualan.dim_produk_id', '=', 'dim_produk.id');
+        $query = NikeSale::query();
 
         // Filters
-        if ($year) $query->where('dim_waktu.tahun', $year);
-        if ($region) $query->where('dim_pelanggan.region', $region);
+        if ($year) $query->whereYear('order_date', $year);
+        if ($region) $query->where('region', $region);
         if ($search) {
             $query->where(function($q) use ($search) {
-                $q->where('fact_penjualan.order_id', 'like', "%$search%")
-                  ->orWhere('dim_produk.product_name', 'like', "%$search%");
+                $q->where('order_id', 'like', "%$search%")
+                  ->orWhere('product_name', 'like', "%$search%");
             });
         }
 
         // Transactions (Paginated)
-        $transactions = (clone $query)->orderByDesc('fact_penjualan.id')->paginate(10);
+        $transactions = (clone $query)->orderByDesc('id')->paginate(10);
 
         // KPIs Calculation
         $stats = (clone $query)->select(
-            DB::raw('SUM(fact_penjualan.revenue) as total_revenue'),
-            DB::raw('SUM(fact_penjualan.profit) as total_profit'),
-            DB::raw('COUNT(fact_penjualan.id) as total_orders'),
-            DB::raw('AVG(fact_penjualan.revenue) as avg_order')
+            DB::raw('SUM(revenue) as total_revenue'),
+            DB::raw('SUM(profit) as total_profit'),
+            DB::raw('COUNT(id) as total_orders'),
+            DB::raw('AVG(revenue) as avg_order')
         )->first();
 
         $margin = $stats->total_revenue > 0 ? ($stats->total_profit / $stats->total_revenue) * 100 : 0;
@@ -82,22 +81,23 @@ class AnalystController extends Controller
 
     private function getTrends($year, $region)
     {
-        $q = FactPenjualan::select(
-            'dim_waktu.nama_bulan',
-            DB::raw('SUM(fact_penjualan.revenue) as revenue'),
-            DB::raw('SUM(fact_penjualan.profit) as profit')
+        $q = NikeSale::select(
+            DB::raw('MONTH(order_date) as bulan'),
+            DB::raw('SUM(revenue) as revenue'),
+            DB::raw('SUM(profit) as profit')
         )
-        ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
-        ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-        ->groupBy('dim_waktu.bulan', 'dim_waktu.nama_bulan')
-        ->orderBy('dim_waktu.bulan');
+        ->whereNotNull('order_date')
+        ->groupBy('bulan')
+        ->orderBy('bulan');
 
-        if ($year) $q->where('dim_waktu.tahun', $year);
-        if ($region) $q->where('dim_pelanggan.region', $region);
+        if ($year) $q->whereYear('order_date', $year);
+        if ($region) $q->where('region', $region);
 
         $res = $q->get();
+        $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
         return [
-            'labels' => $res->pluck('nama_bulan')->map(fn($m) => substr($m, 0, 3)),
+            'labels' => $res->pluck('bulan')->map(fn($m) => $monthNames[$m-1]),
             'revenue' => $res->pluck('revenue'),
             'profit' => $res->pluck('profit'),
         ];
@@ -105,16 +105,13 @@ class AnalystController extends Controller
 
     private function getTopProducts($year, $region)
     {
-        $q = FactPenjualan::select('dim_produk.product_name', DB::raw('SUM(fact_penjualan.revenue) as revenue'))
-            ->join('dim_produk', 'fact_penjualan.dim_produk_id', '=', 'dim_produk.id')
-            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
-            ->groupBy('dim_produk.product_name')
+        $q = NikeSale::select('product_name', DB::raw('SUM(revenue) as revenue'))
+            ->groupBy('product_name')
             ->orderByDesc('revenue')
             ->limit(10);
 
-        if ($year) $q->where('dim_waktu.tahun', $year);
-        if ($region) $q->where('dim_pelanggan.region', $region);
+        if ($year) $q->whereYear('order_date', $year);
+        if ($region) $q->where('region', $region);
 
         $res = $q->get();
         return [
@@ -125,12 +122,10 @@ class AnalystController extends Controller
 
     private function getRegionSplit($year)
     {
-        $q = FactPenjualan::select('dim_pelanggan.region', DB::raw('SUM(fact_penjualan.revenue) as revenue'))
-            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
-            ->groupBy('dim_pelanggan.region');
+        $q = NikeSale::select('region', DB::raw('SUM(revenue) as revenue'))
+            ->groupBy('region');
 
-        if ($year) $q->where('dim_waktu.tahun', $year);
+        if ($year) $q->whereYear('order_date', $year);
 
         $res = $q->get();
         return [
@@ -141,13 +136,11 @@ class AnalystController extends Controller
 
     private function getGenderSplit($year, $region)
     {
-        $q = FactPenjualan::select('dim_pelanggan.gender_category', DB::raw('SUM(fact_penjualan.revenue) as revenue'))
-            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
-            ->groupBy('dim_pelanggan.gender_category');
+        $q = NikeSale::select('gender_category', DB::raw('SUM(revenue) as revenue'))
+            ->groupBy('gender_category');
 
-        if ($year) $q->where('dim_waktu.tahun', $year);
-        if ($region) $q->where('dim_pelanggan.region', $region);
+        if ($year) $q->whereYear('order_date', $year);
+        if ($region) $q->where('region', $region);
 
         $res = $q->get();
         return [
@@ -158,13 +151,11 @@ class AnalystController extends Controller
 
     private function getChannelSplit($year, $region)
     {
-        $q = FactPenjualan::select('sales_channel', DB::raw('SUM(revenue) as revenue'))
-            ->join('dim_pelanggan', 'fact_penjualan.dim_pelanggan_id', '=', 'dim_pelanggan.id')
-            ->join('dim_waktu', 'fact_penjualan.dim_waktu_id', '=', 'dim_waktu.id')
+        $q = NikeSale::select('sales_channel', DB::raw('SUM(revenue) as revenue'))
             ->groupBy('sales_channel');
 
-        if ($year) $q->where('dim_waktu.tahun', $year);
-        if ($region) $q->where('dim_pelanggan.region', $region);
+        if ($year) $q->whereYear('order_date', $year);
+        if ($region) $q->where('region', $region);
 
         $res = $q->get();
         return [
@@ -175,15 +166,15 @@ class AnalystController extends Controller
 
     public function export(Request $request)
     {
-        $data = FactPenjualan::with(['produk', 'pelanggan', 'waktu'])->get();
-        $filename = 'analytics_export_' . now()->timestamp . '.csv';
+        $data = NikeSale::all();
+        $filename = 'nike_sales_export_' . now()->timestamp . '.csv';
         $headers = ["Content-Type" => "text/csv", "Content-Disposition" => "attachment; filename=$filename"];
 
         return response()->stream(function() use ($data) {
             $file = fopen('php://output', 'w');
             fputcsv($file, ['Order ID', 'Date', 'Product', 'Region', 'Revenue', 'Profit']);
             foreach ($data as $row) {
-                fputcsv($file, [$row->order_id, $row->waktu?->order_date, $row->produk?->product_name, $row->pelanggan?->region, $row->revenue, $row->profit]);
+                fputcsv($file, [$row->order_id, $row->order_date?->format('Y-m-d'), $row->product_name, $row->region, $row->revenue, $row->profit]);
             }
             fclose($file);
         }, 200, $headers);
