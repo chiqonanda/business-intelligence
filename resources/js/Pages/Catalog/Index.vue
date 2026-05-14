@@ -49,36 +49,41 @@ const formatCurrency = (val) => {
       <div v-for="product in products.data" :key="product.id" class="card-premium group overflow-hidden flex flex-col bg-black hover:border-[#d9ff00]/30">
         <div class="aspect-[4/5] relative overflow-hidden bg-zinc-950">
           <img 
-            :src="product.images?.split('|')[0]?.trim() || 'https://via.placeholder.com/400'" 
-            class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000 opacity-90 group-hover:opacity-100"
+            :src="product.images?.split('|')[0]?.trim() || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1000&auto=format&fit=crop'" 
+            class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700"
+            @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1000&auto=format&fit=crop'"
           />
-          <div class="absolute top-6 right-6 badge-premium !bg-black/80 !backdrop-blur-md !text-[#d9ff00] !border-[#d9ff00]/20">
-            {{ product.brand?.toUpperCase() }}
+          <div class="absolute top-3 right-3 badge-premium !bg-black/80 backdrop-blur-md !border-white/10 group-hover:!border-[#d9ff00]/50 transition-colors">
+            <span class="text-[8px] font-black tracking-widest text-white italic group-hover:text-[#d9ff00]">NIKE</span>
           </div>
         </div>
         
-        <div class="p-8 flex-1 flex flex-col bg-gradient-to-b from-transparent to-black/20">
-          <p class="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-3">{{ product.sub_title }}</p>
-          <h3 class="text-sm font-black uppercase tracking-tight mb-6 group-hover:text-[#d9ff00] transition-colors line-clamp-2 font-header leading-snug">{{ product.name }}</h3>
+        <div class="p-5 flex-1 flex flex-col justify-between">
+          <div>
+            <p class="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-2">{{ product.sub_title }}</p>
+            <h3 class="text-[11px] font-black uppercase tracking-tight mb-4 line-clamp-2 text-white group-hover:text-[#d9ff00] transition-colors">{{ product.name }}</h3>
+          </div>
           
-          <div class="mt-auto flex items-end justify-between pt-6 border-t border-white/5">
-            <div>
-              <p class="text-[9px] font-bold text-zinc-700 uppercase tracking-widest mb-1">MSRP</p>
-              <p class="text-xl font-black italic font-header">{{ formatCurrency(product.price) }}</p>
-            </div>
-            <div class="text-right">
-              <p class="text-[9px] font-bold text-zinc-700 uppercase tracking-widest mb-1">RATING</p>
-              <p class="text-sm font-black text-[#d9ff00] italic font-header">{{ product.avg_rating }} ★</p>
-            </div>
+          <div class="flex items-center justify-between pt-4 border-t border-white/5">
+             <div>
+                <p class="text-[8px] font-black text-zinc-700 uppercase tracking-widest mb-0.5">MSRP</p>
+                <p class="text-lg font-black italic tracking-tighter text-white font-header">{{ formatCurrency(product.price) }}</p>
+             </div>
+             <div class="text-right">
+                <p class="text-[8px] font-black text-zinc-700 uppercase tracking-widest mb-0.5">RATING</p>
+                <p class="text-[11px] font-black text-[#d9ff00] italic font-header">{{ product.avg_rating }} ★</p>
+             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- EMPTY STATE -->
-    <div v-else class="py-40 glass-effect border-dashed flex flex-col items-center justify-center animate-slide-up">
-       <div class="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-8 border border-white/10 group">
-          <svg class="h-8 w-8 text-zinc-700 group-hover:text-[#d9ff00] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+    <!-- Empty State -->
+    <div v-else class="py-40 text-center animate-slide-up">
+       <div class="inline-block p-10 bg-white/5 border border-white/10 mb-8">
+          <svg class="h-12 w-12 text-zinc-800 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
        </div>
        <p class="text-sm font-black text-white uppercase tracking-[0.4em] mb-3">No Assets Detected</p>
        <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] max-w-sm text-center leading-relaxed">The catalog node is currently empty. Please upload the product baseline CSV to initialize the gear database.</p>

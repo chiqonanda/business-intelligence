@@ -70,7 +70,7 @@ const currentUser = computed(() => page.props.auth.user)
     <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-10 mb-16 animate-slide-up">
       <div>
         <p class="text-[10px] font-black uppercase tracking-[0.5em] text-[#d9ff00] mb-4">Identity Governance</p>
-        <h1 class="page-title-premium">SECURITY</h1>
+        <h1 class="page-title-premium">IDENTITY</h1>
         <p class="text-zinc-600 font-bold text-sm uppercase tracking-widest mt-4">
           Manage network access, operator roles, and authentication protocols.
         </p>

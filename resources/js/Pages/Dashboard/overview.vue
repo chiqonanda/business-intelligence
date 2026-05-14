@@ -133,31 +133,54 @@ onMounted(() => {
     }
   })
 
-  // Review Sentiment
+  // Athlete Sentiment Doughnut (Optimized for Readability)
   new Chart(reviewChart.value, {
-    type: 'polarArea',
+    type: 'doughnut',
     data: {
-      labels: props.charts.reviews.labels,
+      labels: ['5 Star', '4 Star', '3 Star', '2 Star', '1 Star'],
       datasets: [{
-        data: props.charts.reviews.data,
-        backgroundColor: [
-          'rgba(217, 255, 0, 0.1)',
-          'rgba(217, 255, 0, 0.3)',
-          'rgba(217, 255, 0, 0.5)',
-          'rgba(217, 255, 0, 0.7)',
-          'rgba(217, 255, 0, 0.9)',
+        data: [
+          props.charts.reviews.data[props.charts.reviews.labels.indexOf('5.0 Star')] || props.charts.reviews.data[props.charts.reviews.labels.indexOf('5 Star')] || 0,
+          props.charts.reviews.data[props.charts.reviews.labels.indexOf('4.0 Star')] || props.charts.reviews.data[props.charts.reviews.labels.indexOf('4 Star')] || 0,
+          props.charts.reviews.data[props.charts.reviews.labels.indexOf('3.0 Star')] || props.charts.reviews.data[props.charts.reviews.labels.indexOf('3 Star')] || 0,
+          props.charts.reviews.data[props.charts.reviews.labels.indexOf('2.0 Star')] || props.charts.reviews.data[props.charts.reviews.labels.indexOf('2 Star')] || 0,
+          props.charts.reviews.data[props.charts.reviews.labels.indexOf('1.0 Star')] || props.charts.reviews.data[props.charts.reviews.labels.indexOf('1 Star')] || 0,
         ],
-        borderWidth: 2,
-        borderColor: '#000',
+        backgroundColor: [
+          '#d9ff00', // 5 Star - Volt
+          '#ffffff', // 4 Star - White
+          '#a1a1aa', // 3 Star - Gray
+          '#3f3f46', // 2 Star - Dark Gray
+          '#e11d48', // 1 Star - Rose (Alert)
+        ],
+        borderWidth: 0,
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'right', labels: { color: '#a1a1aa', font: { weight: '900', size: 10, family: 'Outfit' } } } },
-      scales: {
-        r: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { display: false }, angleLines: { color: 'rgba(255,255,255,0.05)' } }
-      }
+      plugins: { 
+        legend: { 
+          position: 'right', 
+          labels: { 
+            color: '#a1a1aa', 
+            font: { weight: '900', size: 10, family: 'Outfit' },
+            padding: 20,
+            usePointStyle: true,
+            pointStyle: 'rect'
+          } 
+        },
+        tooltip: {
+          backgroundColor: '#000',
+          titleFont: { size: 10, weight: 'bold' },
+          bodyFont: { size: 12, weight: 'black' },
+          padding: 15,
+          displayColors: true,
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1
+        }
+      },
+      cutout: '75%',
     }
   })
 })
@@ -195,33 +218,41 @@ onMounted(() => {
 
     <!-- METRICS GRID -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-slide-up" style="animation-delay: 0.1s">
-      <!-- Revenue (MEMBER ONLY) -->
-      <div v-if="!stats.is_guest" class="card-premium p-6 group relative overflow-hidden">
-        <div class="absolute -top-4 -right-4 p-8 text-[60px] font-black text-white/5 italic select-none font-header">$$</div>
-        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] mb-6 group-hover:text-[#d9ff00] transition-colors">Net Revenue Generated</p>
-        <p class="text-5xl font-black italic tracking-tighter font-header">{{ formatCurrency(stats.total_revenue) }}</p>
+      <!-- Revenue -->
+      <div class="card-premium p-6 group relative overflow-hidden min-h-[160px] flex flex-col justify-between">
+        <div class="absolute -top-2 -right-2 p-6 text-[40px] font-black text-white/5 italic select-none font-header">$$</div>
+        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] group-hover:text-[#d9ff00] transition-colors">Net Revenue</p>
+        <div class="mt-4">
+          <p class="text-3xl font-black italic tracking-tighter font-header leading-none">{{ formatCurrency(stats.total_revenue) }}</p>
+          <p v-if="!stats.is_guest" class="text-[8px] font-bold text-zinc-700 uppercase tracking-widest mt-3 italic">AOV: {{ formatCurrency(stats.avg_order_value) }}</p>
+        </div>
+      </div>
+
+      <!-- Profit (MEMBER ONLY) -->
+      <div class="card-premium p-6 group relative overflow-hidden min-h-[160px] flex flex-col justify-between bg-[#d9ff00]/5 border-[#d9ff00]/20">
+        <p class="text-[9px] font-black text-[#d9ff00] uppercase tracking-[0.4em]">Gross Profit</p>
+        <div class="mt-4">
+          <p class="text-3xl font-black italic tracking-tighter text-white font-header leading-none">{{ formatCurrency(stats.total_profit) }}</p>
+          <p v-if="!stats.is_guest" class="text-[8px] font-bold text-[#d9ff00] uppercase tracking-widest mt-3 italic">MARGIN: {{ stats.profit_margin }}%</p>
+          <p v-else class="text-[8px] font-bold text-zinc-700 uppercase tracking-widest mt-3 italic">CLEARANCE REQUIRED</p>
+        </div>
       </div>
 
       <!-- Units -->
-      <div class="card-premium p-6 group relative overflow-hidden" :class="{'lg:col-span-2': stats.is_guest}">
-        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] mb-6 group-hover:text-[#d9ff00] transition-colors">Global Units Moved</p>
-        <p class="text-5xl font-black italic tracking-tighter font-header">{{ (stats.total_units || 0).toLocaleString() }}</p>
-        <p class="text-[9px] font-bold text-zinc-700 uppercase tracking-widest mt-2">Inventory Flow Active</p>
+      <div class="card-premium p-6 group relative overflow-hidden min-h-[160px] flex flex-col justify-between border-white/5">
+        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] group-hover:text-[#d9ff00] transition-colors">Units Moved</p>
+        <div class="mt-4">
+          <p class="text-3xl font-black italic tracking-tighter text-white font-header leading-none">{{ (stats.total_units || 0).toLocaleString() }}</p>
+          <p class="text-[8px] font-bold text-zinc-700 uppercase tracking-widest mt-3 italic">NODES ACTIVE: {{ stats.total_orders.toLocaleString() }}</p>
+        </div>
       </div>
 
-      <!-- Avg Rating -->
-      <div class="card-premium p-6 group relative overflow-hidden bg-[#d9ff00] !border-none">
-        <p class="text-[9px] font-black text-black/40 uppercase tracking-[0.4em] mb-6">Athlete Satisfaction</p>
-        <p class="text-5xl font-black italic tracking-tighter text-black font-header">{{ review_stats.avg_rating }}</p>
-        <p class="text-[9px] font-bold text-black/60 uppercase tracking-widest mt-2 italic">{{ review_stats.total_reviews.toLocaleString() }} FEEDBACK NODES</p>
-      </div>
-
-      <!-- Product Count -->
-      <div class="card-premium p-6 group relative overflow-hidden border-white/10">
-        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-[0.4em] mb-6 group-hover:text-[#d9ff00] transition-colors">Catalog Assets</p>
-        <div class="flex items-center gap-4">
-          <p class="text-5xl font-black italic tracking-tighter uppercase font-header">{{ stats.total_products.toLocaleString() }}</p>
-          <div class="h-3 w-3 rounded-full bg-[#d9ff00] animate-ping shadow-[0_0_15px_#d9ff00]"></div>
+      <!-- Athlete Satisfaction -->
+      <div class="card-premium p-6 group relative overflow-hidden min-h-[160px] flex flex-col justify-between bg-[#d9ff00] !border-none">
+        <p class="text-[9px] font-black text-black/40 uppercase tracking-[0.4em]">Consumer Sentiment</p>
+        <div class="mt-4">
+          <p class="text-3xl font-black italic tracking-tighter text-black font-header leading-none">{{ review_stats.avg_rating }}</p>
+          <p class="text-[8px] font-bold text-black/60 uppercase tracking-widest mt-3 italic">{{ review_stats.total_reviews.toLocaleString() }} FEEDBACK NODES</p>
         </div>
       </div>
     </div>
@@ -253,12 +284,20 @@ onMounted(() => {
 
     <!-- REVIEW & CHANNEL SECTION -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-20 animate-slide-up" style="animation-delay: 0.3s">
-        <!-- Review Sentiment (PUBLIC) -->
+        <!-- Athlete Sentiment Doughnut (Sleek & Professional) -->
         <div class="card-premium p-10 h-[500px] flex flex-col" :class="{'lg:col-span-3': stats.is_guest}">
-            <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-white mb-10">Athlete Sentiment Radar</h3>
-            <div class="flex-1 min-h-0">
-                <canvas ref="reviewChart"></canvas>
-            </div>
+          <div class="flex items-center justify-between mb-10">
+            <h3 class="text-xs font-black uppercase tracking-[0.4em] text-white">Sentiment Audit</h3>
+            <span class="text-[9px] font-black text-[#d9ff00] bg-[#d9ff00]/10 px-3 py-1 border border-[#d9ff00]/20">PROPORTIONAL</span>
+          </div>
+          <div class="flex-1 min-h-0 flex items-center justify-center relative">
+             <canvas ref="reviewChart"></canvas>
+          </div>
+          <div class="mt-8 pt-6 border-t border-white/5">
+             <p class="text-[8px] font-bold text-zinc-700 uppercase tracking-widest text-center">
+               Interact with legend to filter audit sectors
+             </p>
+          </div>
         </div>
 
         <!-- Channel Split (MEMBER ONLY) -->

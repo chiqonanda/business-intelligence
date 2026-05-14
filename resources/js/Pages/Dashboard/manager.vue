@@ -96,7 +96,7 @@ onMounted(() => {
     new Chart(productChartRef.value, {
       type: 'doughnut',
       data: {
-        labels: props.byLine.map(p => p.product_line.toUpperCase()),
+        labels: props.byLine.map(p => (p.product_line || 'Unknown').toUpperCase()),
         datasets: [{
           data: props.byLine.map(p => p.revenue),
           backgroundColor: ['#d9ff00', '#ffffff', '#18181b', '#27272a', '#3f3f46'],
@@ -107,7 +107,17 @@ onMounted(() => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
+        plugins: { 
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#000',
+            titleFont: { family: 'Outfit', weight: '900' },
+            bodyFont: { family: 'Outfit' },
+            padding: 15,
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 1
+          }
+        }
       }
     })
   }
@@ -165,9 +175,43 @@ onMounted(() => {
        <div class="card-premium p-6 flex items-center justify-between bg-black/40 border-[#d9ff00]/20">
           <div>
             <p class="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Market Fit Accuracy</p>
-            <p class="text-sm font-black text-[#d9ff00] italic font-header">{{ reviewSummary.true_to_size }} TRUE NODES</p>
+            <p class="text-sm font-black text-[#d9ff00] italic font-header">{{ (reviewSummary.true_to_size || 0).toLocaleString() }} TRUE NODES</p>
           </div>
           <svg class="h-5 w-5 text-[#d9ff00]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+       </div>
+    </div>
+
+    <!-- STRATEGIC INSIGHTS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-slide-up" style="animation-delay: 0.15s">
+       <div class="card-premium p-6 bg-[#d9ff00]/5 border-[#d9ff00]/20">
+          <div class="flex items-center gap-3 mb-4">
+             <div class="h-2 w-2 rounded-full bg-[#d9ff00]"></div>
+             <p class="text-[9px] font-black text-[#d9ff00] uppercase tracking-widest">Yield Optimization</p>
+          </div>
+          <p class="text-[11px] font-black text-white uppercase leading-relaxed">
+             Profit margins are holding at <span class="text-[#d9ff00]">{{ summary.total_revenue > 0 ? ((summary.total_profit / summary.total_revenue) * 100).toFixed(1) : '0.0' }}%</span>. 
+             Revenue trajectory suggests strong demand in the {{ byRegion[0]?.region || 'N/A' }} sector.
+          </p>
+       </div>
+       <div class="card-premium p-6 bg-white/5">
+          <div class="flex items-center gap-3 mb-4">
+             <div class="h-2 w-2 rounded-full bg-white"></div>
+             <p class="text-[9px] font-black text-white uppercase tracking-widest">Market Fit Audit</p>
+          </div>
+          <p class="text-[11px] font-black text-zinc-400 uppercase leading-relaxed">
+             Athlete sentiment is stable at <span class="text-white">{{ reviewSummary.avg_rating }} stars</span>. 
+             {{ reviewSummary.true_to_size }} units confirmed as "True to Size," reducing return logistics risk.
+          </p>
+       </div>
+       <div class="card-premium p-6 bg-white/5">
+          <div class="flex items-center gap-3 mb-4">
+             <div class="h-2 w-2 rounded-full bg-zinc-600"></div>
+             <p class="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Inventory Velocity</p>
+          </div>
+          <p class="text-[11px] font-black text-zinc-400 uppercase leading-relaxed">
+             {{ (summary.total_units / summary.total_orders).toFixed(1) }} units per transaction detected. 
+             {{ byLine[0]?.product_line }} continues to dominate the global portfolio mix.
+          </p>
        </div>
     </div>
 
@@ -217,15 +261,59 @@ onMounted(() => {
              <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div class="text-center" v-if="byLine?.length">
                    <p class="text-[8px] font-black text-zinc-700 uppercase tracking-widest">Elite Line</p>
-                   <p class="text-[10px] font-black text-white uppercase mt-0.5">{{ byLine[0].product_line }}</p>
+                   <p class="text-[10px] font-black text-white uppercase mt-0.5">{{ byLine[0]?.product_line || 'N/A' }}</p>
                 </div>
              </div>
           </div>
        </div>
     </div>
 
+    <!-- YEARLY PERFORMANCE & CHANNELS -->
+    <div class="grid lg:grid-cols-3 gap-6 mb-10 animate-slide-up" style="animation-delay: 0.35s">
+        <!-- Yearly Breakdown -->
+        <div class="card-premium p-6 lg:col-span-2">
+            <h3 class="text-xs font-black text-white uppercase tracking-[0.3em] mb-6">Yearly Performance Audit</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-white/5">
+                            <th class="py-4 text-[8px] font-black text-zinc-600 uppercase tracking-widest">Cycle (Year)</th>
+                            <th class="py-4 text-[8px] font-black text-zinc-600 uppercase tracking-widest">Revenue</th>
+                            <th class="py-4 text-[8px] font-black text-zinc-600 uppercase tracking-widest text-right">Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        <tr v-for="y in yearlyComparison" :key="y.year" class="group">
+                            <td class="py-4 text-[10px] font-black text-white font-header italic">{{ y.year }}</td>
+                            <td class="py-4 text-[10px] font-black text-[#d9ff00] font-header">{{ formatCurrency(y.revenue) }}</td>
+                            <td class="py-4 text-right">
+                                <span class="text-[8px] font-black text-zinc-500 group-hover:text-white transition-colors">OPTIMIZED</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Channel Performance -->
+        <div class="card-premium p-6">
+            <h3 class="text-xs font-black text-white uppercase tracking-[0.3em] mb-6">Market Access</h3>
+            <div class="space-y-6">
+                <div v-for="c in channelPerf" :key="c.sales_channel" class="group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[9px] font-black text-zinc-500 uppercase tracking-widest group-hover:text-white transition-colors">{{ c.sales_channel }}</span>
+                        <span class="text-[9px] font-black text-[#d9ff00]">{{ formatCurrency(c.revenue) }}</span>
+                    </div>
+                    <div class="h-1.5 w-full bg-white/5 overflow-hidden">
+                        <div class="h-full bg-[#d9ff00] transition-all duration-1000" :style="{ width: (summary.total_revenue > 0 ? (c.revenue / summary.total_revenue * 100) : 0) + '%' }"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- TOP PERFORMER TABLE -->
-    <div class="card-premium bg-black animate-slide-up" style="animation-delay: 0.3s">
+    <div class="card-premium bg-black animate-slide-up" style="animation-delay: 0.4s">
       <div class="p-6 border-b border-white/5 flex items-center justify-between">
         <h3 class="text-xs font-black text-white uppercase tracking-[0.3em]">Elite Unit Performance</h3>
         <span class="badge-premium !text-[#d9ff00] !border-[#d9ff00]/20">Top 10 Nodes</span>
@@ -252,7 +340,7 @@ onMounted(() => {
                  </div>
               </td>
               <td class="px-6 py-5 text-[10px] font-black text-[#d9ff00] italic font-header">{{ formatCurrency(p.revenue) }}</td>
-              <td class="px-6 py-5 text-[10px] font-black text-white italic font-header">{{ p.units.toLocaleString() }}</td>
+              <td class="px-6 py-5 text-[10px] font-black text-white italic font-header">{{ (p.units || 0).toLocaleString() }}</td>
               <td class="px-6 py-5">
                  <span class="text-[8px] font-black px-3 py-1 bg-white/5 text-zinc-400 uppercase tracking-widest border border-white/5 group-hover:border-[#d9ff00]/30 group-hover:text-[#d9ff00] transition-all">High Yield</span>
               </td>

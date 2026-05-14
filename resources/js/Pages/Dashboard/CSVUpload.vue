@@ -46,9 +46,11 @@ const clearLogs = () => {
 
 const resetData = () => {
     if (confirm('CRITICAL: PERFORM GLOBAL SYSTEM RESET? ALL NODES WILL BE WIPED.')) {
-        router.delete(route('upload.truncate'), {
-            onSuccess: () => success.value = 'GLOBAL RESET COMPLETE'
-        })
+        if (confirm('AUTHORIZATION REQUIRED: ARE YOU ABSOLUTELY SURE? THIS ACTION CANNOT BE UNDONE.')) {
+            router.delete(route('upload.truncate'), {
+                onSuccess: () => success.value = 'GLOBAL RESET COMPLETE'
+            })
+        }
     }
 }
 

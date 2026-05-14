@@ -48,11 +48,11 @@ const logout = () => router.post(route('logout'))
       <div class="flex h-full flex-col p-10">
         <!-- Brand Mark -->
         <div class="mb-20">
-          <div class="flex items-center gap-3 mb-3 group cursor-pointer" @click="router.visit('/')">
-            <span class="text-5xl font-black italic tracking-tighter leading-none font-header group-hover:text-[#d9ff00] transition-colors">NIKE</span>
+          <div class="flex items-center gap-4 mb-3 group cursor-pointer" @click="router.visit('/')">
+            <svg class="h-6 w-12 text-[#d9ff00]" viewBox="0 0 24 24" fill="currentColor"><path d="M21 8.75c-4.19 0-8.31 2.47-11.77 5.74-2.31 2.21-3.5 3.32-4.59 3.32-.4 0-.82-.16-1.21-.48l-.05-.04c-.38-.34-.58-.87-.63-1.46-.07-1.12.39-2.26 1.34-3.32 1.43-1.61 3.51-2.9 6.22-3.83.6-.21 1.01-.72 1.06-1.35.05-.63-.31-1.23-.9-1.46-.59-.23-1.25-.13-1.74.26-3.38 2.65-5.59 5.67-6.58 8.98-.44 1.48-.44 2.87.01 4.1.66 1.83 2.21 2.75 4.6 2.75 2.16 0 4.54-1.21 7.27-3.69 3.84-3.48 8.01-5.91 12.34-5.91.55 0 1-.45 1-1s-.45-1-1-1z"/></svg>
             <div class="flex flex-col">
-                <span class="text-[10px] font-black tracking-[0.4em] text-[#d9ff00]">INTEL</span>
-                <div class="h-[2px] w-full bg-[#d9ff00]/20 mt-1 group-hover:bg-[#d9ff00] transition-all"></div>
+                <span class="text-3xl font-black italic tracking-tighter leading-none font-header">INTEL</span>
+                <span class="text-[9px] font-black tracking-[0.4em] text-[#d9ff00] mt-1">NODE: OPERATIONAL</span>
             </div>
           </div>
           <p class="text-[8px] font-black text-zinc-600 uppercase tracking-[0.5em] animate-pulse">Operational Hub v2.0</p>
