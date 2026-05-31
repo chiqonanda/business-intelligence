@@ -23,7 +23,7 @@ return new class extends Migration
             $table->decimal('avg_rating', 3, 2)->nullable();
             $table->integer('review_count')->default(0);
             $table->text('images')->nullable();
-            $table->string('available_sizes')->nullable();
+            $table->text('available_sizes')->nullable();
             $table->string('url')->nullable();
             $table->timestamps();
 

@@ -38,7 +38,7 @@ class DimWaktu extends Model
 
     return self::firstOrCreate(
         [
-            'order_date' => $date->toDateTimeString()
+            'order_date' => $date->toDateString()
         ],
         [
             'hari'       => $date->day,

@@ -26,6 +26,7 @@ onMounted(() => {
   const isGuest = props.stats.is_guest;
 
   // Monthly Trend
+  if (trendChart.value) {
   new Chart(trendChart.value, {
     type: 'line',
     data: {
@@ -73,9 +74,12 @@ onMounted(() => {
         }
       }
     }
+    
   })
+}
 
   // Region Split
+  
   new Chart(regionChart.value, {
     type: 'doughnut',
     data: {
